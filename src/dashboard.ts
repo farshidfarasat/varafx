@@ -561,6 +561,26 @@ export const dashboardHtml = `<!DOCTYPE html>
             </tbody>
           </table>
         </div>
+        
+        <!-- Source Comparison Sub-table -->
+        <div style="margin-top: 2rem;">
+          <div class="card-title" id="title-sources" style="font-size: 1.1rem; margin-bottom: 0.75rem;">Market Rates by Source</div>
+          <div style="overflow-x: auto;">
+            <table class="rates-table" style="font-size: 0.9rem;">
+              <thead>
+                <tr>
+                  <th id="th-src-name">Source</th>
+                  <th id="th-src-usd">USD Buy / Sell</th>
+                  <th id="th-src-gbp">GBP Buy / Sell</th>
+                </tr>
+              </thead>
+              <tbody id="sources-tbody">
+                <!-- Source compare populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <p class="last-updated" id="last-updated-text">Aggregated just now</p>
       </div>
 
@@ -636,6 +656,7 @@ export const dashboardHtml = `<!DOCTYPE html>
   <script>
     let currentLang = 'en';
     let apiData = null;
+    let historyData = null;
 
     const dictionary = {
       en: {
@@ -655,7 +676,7 @@ export const dashboardHtml = `<!DOCTYPE html>
         titleUsdChart: "USD Free Market Trend (7 Days)",
         titleGbpChart: "GBP Free Market Trend (7 Days)",
         titleApiDocs: "Developer API Documentation",
-        apiDocsDesc: "Integrate our aggregated exchange rate feed into your own services. The endpoint returns JSON containing aggregated live market rates, central bank official rates, bidirectional conversions, and 7-day historical pricing.",
+        apiDocsDesc: "Integrate our aggregated exchange rate feed into your own services. The endpoint returns JSON containing aggregated live market rates, central bank official rates, bidirectional conversions, and 12-month historical pricing.",
         copyBtn: "Copy URL",
         copied: "Copied!",
         freeMarket: "Free Market",
@@ -663,7 +684,11 @@ export const dashboardHtml = `<!DOCTYPE html>
         toman: "Toman",
         rial: "Rial",
         lastUpdated: "Last Aggregated: ",
-        errorLoading: "Failed to load exchange rates. Please refresh."
+        errorLoading: "Failed to load exchange rates. Please refresh.",
+        titleSources: "Market Rates by Source",
+        thSrcName: "Source",
+        thSrcUsd: "USD Buy / Sell",
+        thSrcGbp: "GBP Buy / Sell"
       },
       fa: {
         loading: "در حال دریافت قیمت‌های لحظه‌ای بازار...",
@@ -682,7 +707,7 @@ export const dashboardHtml = `<!DOCTYPE html>
         titleUsdChart: "نمودار قیمت دلار بازار آزاد (۷ روز گذشته)",
         titleGbpChart: "نمودار قیمت پوند بازار آزاد (۷ روز گذشته)",
         titleApiDocs: "مستندات ای‌پی‌آی (API) توسعه‌دهندگان",
-        apiDocsDesc: "از اطلاعات نرخ‌های لحظه‌ای و ترکیب‌شده ما در نرم‌افزارها و پروژه‌های خود استفاده کنید. خروجی این بخش به فرمت استاندارد JSON است و شامل نرخ‌های آزاد، نرخ دولتی بانک مرکزی و آرشیو ۷ روزه می‌باشد.",
+        apiDocsDesc: "از اطلاعات نرخ‌های لحظه‌ای و ترکیب‌شده ما در نرم‌افزارها و پروژه‌های خود استفاده کنید. خروجی این بخش به فرمت استاندارد JSON است و شامل نرخ‌های آزاد، نرخ دولتی بانک مرکزی و تاریخچه ۱۲ ماهه می‌باشد.",
         copyBtn: "کپی آدرس",
         copied: "کپی شد!",
         freeMarket: "بازار آزاد",
@@ -690,7 +715,11 @@ export const dashboardHtml = `<!DOCTYPE html>
         toman: "تومان",
         rial: "ریال",
         lastUpdated: "آخرین بروزرسانی: ",
-        errorLoading: "خطا در بارگذاری اطلاعات. لطفا صفحه را مجدداً بارگذاری کنید."
+        errorLoading: "خطا در بارگذاری اطلاعات. لطفا صفحه را مجدداً بارگذاری کنید.",
+        titleSources: "نرخ بازار به تفکیک منابع اصلی",
+        thSrcName: "منبع نرخ",
+        thSrcUsd: "خرید / فروش دلار",
+        thSrcGbp: "خرید / فروش پوند"
       }
     };
 
@@ -722,33 +751,45 @@ export const dashboardHtml = `<!DOCTYPE html>
       document.getElementById('title-api-docs').innerText = t.titleApiDocs;
       document.getElementById('api-docs-desc').innerText = t.apiDocsDesc;
       document.getElementById('copy-btn').innerText = t.copyBtn;
+      document.getElementById('title-sources').innerText = t.titleSources;
+      document.getElementById('th-src-name').innerText = t.thSrcName;
+      document.getElementById('th-src-usd').innerText = t.thSrcUsd;
+      document.getElementById('th-src-gbp').innerText = t.thSrcGbp;
 
-      // Re-populate values that need translations
       if (apiData) {
         renderRatesTable();
         renderUsdtSources();
+        renderSourceCompareTable();
         renderCharts();
         updateLastUpdated();
       }
     }
 
     async function init() {
-      // Set current API endpoint address automatically
       const apiEndpoint = window.location.origin + '/api/rates';
       document.getElementById('api-endpoint-text').innerText = apiEndpoint;
 
       try {
-        const response = await fetch('/api/rates');
-        if (!response.ok) throw new Error("HTTP error " + response.status);
-        apiData = await response.json();
+        // Parallel fetch of rates and history
+        const [ratesRes, historyRes] = await Promise.all([
+          fetch('/api/rates'),
+          fetch('/api/history')
+        ]);
         
+        if (!ratesRes.ok) throw new Error("Rates API error " + ratesRes.status);
+        apiData = await ratesRes.json();
+        
+        if (historyRes.ok) {
+          historyData = await historyRes.json();
+        }
+
         renderRatesTable();
         renderUsdtSources();
+        renderSourceCompareTable();
         renderCharts();
         calculateConversion();
         updateLastUpdated();
         
-        // Hide loading
         document.getElementById('loading').classList.add('hidden');
       } catch (err) {
         console.error(err);
@@ -778,23 +819,18 @@ export const dashboardHtml = `<!DOCTYPE html>
       const offUsd = apiData.official_rates.USD;
       const offGbp = apiData.official_rates.GBP;
 
-      // Row definitions
       const rows = [
-        { name: 'USD', flag: '🇺🇸', type: t.freeMarket, isOfficial: false, buy: usd.buy, sell: usd.sell, unit: t.toman, src: 'Bonbast' },
-        { name: 'USDT', flag: '🟢', type: t.freeMarket, isOfficial: false, buy: usdt.buy, sell: usdt.sell, unit: t.toman, src: 'Bitpin / Wallex' },
-        { name: 'GBP', flag: '🇬🇧', type: t.freeMarket, isOfficial: false, buy: gbp.buy, sell: gbp.sell, unit: t.toman, src: 'Bonbast' },
+        { name: 'USD', flag: '🇺🇸', type: t.freeMarket, isOfficial: false, buy: usd.buy, sell: usd.sell, unit: t.toman, src: usd.source },
+        { name: 'USDT', flag: '🟢', type: t.freeMarket, isOfficial: false, buy: usdt.buy, sell: usdt.sell, unit: t.toman, src: usdt.source },
+        { name: 'GBP', flag: '🇬🇧', type: t.freeMarket, isOfficial: false, buy: gbp.buy, sell: gbp.sell, unit: t.toman, src: gbp.source },
         { name: 'USD', flag: '🇺🇸', type: t.officialRate, isOfficial: true, buy: null, sell: Math.round(offUsd.rate / 10), unit: t.toman, src: 'CBI (Gov)' },
         { name: 'GBP', flag: '🇬🇧', type: t.officialRate, isOfficial: true, buy: null, sell: Math.round(offGbp.rate / 10), unit: t.toman, src: 'CBI (Gov)' }
       ];
 
       rows.forEach(r => {
         const tr = document.createElement('tr');
-        
-        // Buy text/val
-        const buyVal = r.buy ? \`\${formatNumber(r.buy)} \${r.unit}\` : '-';
+        const buyVal = r.buy ? \`\dots\${formatNumber(r.buy)} \${r.unit}\` : '-';
         const buySub = r.buy ? \`\${formatNumber(r.buy * 10)} \${t.rial}\` : '';
-
-        // Sell text/val
         const sellVal = \`\${formatNumber(r.sell)} \${r.unit}\`;
         const sellSub = \`\${formatNumber(r.sell * 10)} \${t.rial}\`;
 
@@ -809,7 +845,7 @@ export const dashboardHtml = `<!DOCTYPE html>
             <span class="badge \${r.isOfficial ? 'badge-official' : 'badge-market'}">\${r.type}</span>
           </td>
           <td>
-            <div class="price-val">\${buyVal}</div>
+            <div class="price-val">\${r.buy ? formatNumber(r.buy) + ' ' + r.unit : '-'}</div>
             <div class="price-sub">\${buySub}</div>
           </td>
           <td>
@@ -824,16 +860,58 @@ export const dashboardHtml = `<!DOCTYPE html>
       });
     }
 
+    function renderSourceCompareTable() {
+      const tbody = document.getElementById('sources-tbody');
+      tbody.innerHTML = '';
+
+      const t = dictionary[currentLang];
+      const usdSources = apiData.rates.USD.sources || {};
+      const gbpSources = apiData.rates.GBP.sources || {};
+      
+      const allSourceKeys = ['bonbast', 'alanchand', 'navasan'];
+      const sourceDisplayNames = {
+        bonbast: 'Bonbast (Archive)',
+        alanchand: 'AlanChand',
+        navasan: 'Navasan'
+      };
+
+      allSourceKeys.forEach(src => {
+        const usdData = usdSources[src];
+        const gbpData = gbpSources[src];
+
+        const tr = document.createElement('tr');
+        
+        let usdText = '-';
+        if (usdData) {
+          usdText = \`\${formatNumber(usdData.buy)} / \${formatNumber(usdData.sell)} \${t.toman}\`;
+        } else if (src === 'navasan') {
+          usdText = \`<span style="color: var(--text-secondary); font-size: 0.8rem;">(Key Required)</span>\`;
+        }
+
+        let gbpText = '-';
+        if (gbpData) {
+          gbpText = \`\${formatNumber(gbpData.buy)} / \${formatNumber(gbpData.sell)} \${t.toman}\`;
+        } else if (src === 'navasan') {
+          gbpText = \`<span style="color: var(--text-secondary); font-size: 0.8rem;">(Key Required)</span>\`;
+        }
+
+        tr.innerHTML = \`
+          <td style="font-weight: 500;">\${sourceDisplayNames[src]}</td>
+          <td class="price-val" style="font-size: 0.95rem;">\${usdText}</td>
+          <td class="price-val" style="font-size: 0.95rem;">\${gbpText}</td>
+        \`;
+        tbody.appendChild(tr);
+      });
+    }
+
     function renderUsdtSources() {
       const list = document.getElementById('usdt-sources-list');
       list.innerHTML = '';
-      
       const sources = apiData.rates.USDT.sources;
       
       for (const [name, info] of Object.entries(sources)) {
         const item = document.createElement('div');
         item.className = 'source-item';
-        
         let priceStr = '';
         if (info.sell && info.buy) {
           priceStr = \`\${formatNumber(info.sell)} TMN\`;
@@ -865,7 +943,6 @@ export const dashboardHtml = `<!DOCTYPE html>
         return;
       }
 
-      // Convert source to Toman
       let valueInToman = 0;
       const usdMarket = apiData.rates.USD.sell;
       const gbpMarket = apiData.rates.GBP.sell;
@@ -877,7 +954,6 @@ export const dashboardHtml = `<!DOCTYPE html>
       else if (sourceCurr === 'TMN') valueInToman = sourceVal;
       else if (sourceCurr === 'IRR') valueInToman = sourceVal / 10;
 
-      // Convert Toman to target
       let targetVal = 0;
       if (targetCurr === 'USD') targetVal = valueInToman / usdMarket;
       else if (targetCurr === 'GBP') targetVal = valueInToman / gbpMarket;
@@ -885,7 +961,6 @@ export const dashboardHtml = `<!DOCTYPE html>
       else if (targetCurr === 'TMN') targetVal = valueInToman;
       else if (targetCurr === 'IRR') targetVal = valueInToman * 10;
 
-      // Format decimal digits
       let formattedVal = '';
       if (targetCurr === 'TMN' || targetCurr === 'IRR') {
         formattedVal = formatNumber(Math.round(targetVal));
@@ -897,11 +972,39 @@ export const dashboardHtml = `<!DOCTYPE html>
     }
 
     function renderCharts() {
-      const history = apiData.history_7d;
-      if (!history || !history.USD || !history.GBP) return;
+      // Use KV history if available, fallback to 7-day daily history from API rates
+      let usdHistory = [];
+      let gbpHistory = [];
 
-      renderSingleChart('usd-chart-container', history.USD, 'chart-line', 'chart-area', 'chart-gradient');
-      renderSingleChart('gbp-chart-container', history.GBP, 'chart-line chart-line-gbp', 'chart-area chart-area-gbp', 'chart-gradient-gbp');
+      if (historyData && historyData.length > 0) {
+        // If history is persistent, we show the last 7 days.
+        // Since we store 4 points per day, 7 days is 28 data points!
+        const trendHistory = historyData.slice(-28);
+        usdHistory = trendHistory.map(h => ({ date: formatTimestamp(h.timestamp), sell: h.usd.sell }));
+        gbpHistory = trendHistory.map(h => ({ date: formatTimestamp(h.timestamp), sell: h.gbp.sell }));
+      } else if (apiData.history_7d) {
+        usdHistory = apiData.history_7d.USD.map(h => ({ date: h.date, sell: h.sell }));
+        gbpHistory = apiData.history_7d.GBP.map(h => ({ date: h.date, sell: h.sell }));
+      }
+
+      if (usdHistory.length === 0) return;
+
+      renderSingleChart('usd-chart-container', usdHistory, 'chart-line', 'chart-area', 'chart-gradient');
+      renderSingleChart('gbp-chart-container', gbpHistory, 'chart-line chart-line-gbp', 'chart-area chart-area-gbp', 'chart-gradient-gbp');
+    }
+
+    function formatTimestamp(isoStr) {
+      try {
+        const date = new Date(isoStr);
+        // Show MM/DD HH:MM
+        const m = (date.getMonth() + 1).toString().padStart(2, '0');
+        const d = date.getDate().toString().padStart(2, '0');
+        const hr = date.getHours().toString().padStart(2, '0');
+        const min = date.getMinutes().toString().padStart(2, '0');
+        return \`\${m}/\${d} \${hr}:\${min}\`;
+      } catch (e) {
+        return isoStr;
+      }
     }
 
     function renderSingleChart(containerId, dataPoints, lineClass, areaClass, gradientId) {
@@ -910,24 +1013,21 @@ export const dashboardHtml = `<!DOCTYPE html>
 
       const width = 500;
       const height = 180;
-      const padding = 30;
+      const padding = 35;
 
-      // Find bounds
       const prices = dataPoints.map(d => d.sell);
-      const minPrice = Math.min(...prices) * 0.995;
-      const maxPrice = Math.max(...prices) * 1.005;
+      const minPrice = Math.min(...prices) * 0.998;
+      const maxPrice = Math.max(...prices) * 1.002;
       const priceRange = maxPrice - minPrice;
 
       const numPoints = dataPoints.length;
       
-      // Calculate coordinates
       const coords = dataPoints.map((dp, i) => {
         const x = padding + (i / (numPoints - 1)) * (width - 2 * padding);
-        const y = height - padding - ((dp.sell - minPrice) / priceRange) * (height - 2 * padding);
+        const y = height - padding - ((dp.sell - minPrice) / (priceRange || 1)) * (height - 2 * padding);
         return { x, y, dp };
       });
 
-      // Construct SVG path
       let linePath = '';
       let areaPath = \`M \${coords[0].x} \${height - padding} \`;
       
@@ -938,9 +1038,7 @@ export const dashboardHtml = `<!DOCTYPE html>
       });
       areaPath += \`L \${coords[coords.length - 1].x} \${height - padding} Z\`;
 
-      // Create SVG structure
       let gridLines = '';
-      // Horizontal grid lines (3 steps)
       for (let i = 0; i <= 3; i++) {
         const val = minPrice + (i / 3) * priceRange;
         const y = height - padding - (i / 3) * (height - 2 * padding);
@@ -948,24 +1046,23 @@ export const dashboardHtml = `<!DOCTYPE html>
         gridLines += \`<text x="\${padding - 5}" y="\${y + 4}" class="chart-axis-text" text-anchor="end">\${Math.round(val).toLocaleString()}</text>\`;
       }
 
-      // X-Axis dates
       let xAxisLabels = '';
       coords.forEach((c, i) => {
-        // Show labels for start, middle, and end
+        // Show labels for start, middle, and end of the timeline
         if (i === 0 || i === Math.floor(numPoints / 2) || i === numPoints - 1) {
-          const dateParts = c.dp.date.split('/');
-          const label = dateParts.length === 3 ? \`\${dateParts[1]}/\${dateParts[2]}\` : c.dp.date;
-          xAxisLabels += \`<text x="\${c.x}" y="\${height - 10}" class="chart-axis-text" text-anchor="middle">\${label}</text>\`;
+          let label = c.dp.date;
+          if (label.includes(' ')) {
+            label = label.split(' ')[0]; // Show only date part to prevent overlap
+          }
+          xAxisLabels += \`<text x="\${c.x}" y="\${height - 8}" class="chart-axis-text" text-anchor="middle">\${label}</text>\`;
         }
       });
 
-      // Interactive nodes
       let dots = '';
       coords.forEach((c, i) => {
-        dots += \`<circle cx="\${c.x}" cy="\${c.y}" r="4" fill="#fff" stroke="\${lineClass.includes('gbp') ? '#a855f7' : '#6366f1'}" stroke-width="2" style="cursor: pointer;" onmouseover="showTooltip(event, '\${c.dp.date}', \${c.dp.sell})" onmouseout="hideTooltip()"/>\`;
+        dots += \`<circle cx="\${c.x}" cy="\${c.y}" r="3" fill="#fff" stroke="\${lineClass.includes('gbp') ? '#a855f7' : '#6366f1'}" stroke-width="2" style="cursor: pointer;" onmouseover="showTooltip(event, '\${c.dp.date}', \${c.dp.sell})" onmouseout="hideTooltip()"/>\`;
       });
 
-      // Assemble final SVG
       const color1 = lineClass.includes('gbp') ? '#a855f7' : '#6366f1';
       const color2 = lineClass.includes('gbp') ? 'rgba(168, 85, 247, 0)' : 'rgba(99, 102, 241, 0)';
 
@@ -996,8 +1093,8 @@ export const dashboardHtml = `<!DOCTYPE html>
       const y = e.clientY - containerRect.top;
 
       tooltip.innerHTML = \`<strong>\${date}</strong><br/>\${formatNumber(price)} \${dictionary[currentLang].toman}\`;
-      tooltip.style.left = \`\${x + 10}px\`;
-      tooltip.style.top = \`\${y - 45}px\`;
+      tooltip.style.left = \`\dots\${x + 10}px\`;
+      tooltip.style.top = \`\dots\${y - 45}px\`;
       tooltip.style.opacity = 1;
     }
 
@@ -1021,7 +1118,6 @@ export const dashboardHtml = `<!DOCTYPE html>
       });
     }
 
-    // Start everything
     window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>

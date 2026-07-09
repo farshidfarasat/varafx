@@ -562,24 +562,7 @@ export const dashboardHtml = `<!DOCTYPE html>
           </table>
         </div>
         
-        <!-- Source Comparison Sub-table -->
-        <div style="margin-top: 2rem;">
-          <div class="card-title" id="title-sources" style="font-size: 1.1rem; margin-bottom: 0.75rem;">Market Rates by Source</div>
-          <div style="overflow-x: auto;">
-            <table class="rates-table" style="font-size: 0.9rem;">
-              <thead>
-                <tr>
-                  <th id="th-src-name">Source</th>
-                  <th id="th-src-usd">USD Buy / Sell</th>
-                  <th id="th-src-gbp">GBP Buy / Sell</th>
-                </tr>
-              </thead>
-              <tbody id="sources-tbody">
-                <!-- Source compare populated by JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
+
 
         <p class="last-updated" id="last-updated-text">Aggregated just now</p>
       </div>
@@ -751,15 +734,11 @@ export const dashboardHtml = `<!DOCTYPE html>
       document.getElementById('title-api-docs').innerText = t.titleApiDocs;
       document.getElementById('api-docs-desc').innerText = t.apiDocsDesc;
       document.getElementById('copy-btn').innerText = t.copyBtn;
-      document.getElementById('title-sources').innerText = t.titleSources;
-      document.getElementById('th-src-name').innerText = t.thSrcName;
-      document.getElementById('th-src-usd').innerText = t.thSrcUsd;
-      document.getElementById('th-src-gbp').innerText = t.thSrcGbp;
+
 
       if (apiData) {
         renderRatesTable();
         renderUsdtSources();
-        renderSourceCompareTable();
         renderCharts();
         updateLastUpdated();
       }
@@ -785,7 +764,6 @@ export const dashboardHtml = `<!DOCTYPE html>
 
         renderRatesTable();
         renderUsdtSources();
-        renderSourceCompareTable();
         renderCharts();
         calculateConversion();
         updateLastUpdated();
@@ -825,77 +803,33 @@ export const dashboardHtml = `<!DOCTYPE html>
 
       rows.forEach(r => {
         const tr = document.createElement('tr');
-        const buyVal = r.buy ? \`\dots\${formatNumber(r.buy)} \${r.unit}\` : '-';
-        const buySub = r.buy ? \`\${formatNumber(r.buy * 10)} \${t.rial}\` : '';
-        const sellVal = \`\${formatNumber(r.sell)} \${r.unit}\`;
-        const sellSub = \`\${formatNumber(r.sell * 10)} \${t.rial}\`;
+        const buyVal = r.buy ? `${formatNumber(r.buy)} ${r.unit}` : '-';
+        const buySub = r.buy ? `${formatNumber(r.buy * 10)} ${t.rial}` : '';
+        const sellVal = `${formatNumber(r.sell)} ${r.unit}`;
+        const sellSub = `${formatNumber(r.sell * 10)} ${t.rial}`;
 
-        tr.innerHTML = \`
+        tr.innerHTML = `
           <td>
             <div class="currency-cell">
-              <span class="flag-icon">\${r.flag}</span>
-              <span>\${r.name}</span>
+              <span class="flag-icon">${r.flag}</span>
+              <span>${r.name}</span>
             </div>
           </td>
           <td>
-            <span class="badge \${r.isOfficial ? 'badge-official' : 'badge-market'}">\${r.type}</span>
+            <span class="badge ${r.isOfficial ? 'badge-official' : 'badge-market'}">${r.type}</span>
           </td>
           <td>
-            <div class="price-val">\${r.buy ? formatNumber(r.buy) + ' ' + r.unit : '-'}</div>
-            <div class="price-sub">\${buySub}</div>
+            <div class="price-val">${r.buy ? formatNumber(r.buy) + ' ' + r.unit : '-'}</div>
+            <div class="price-sub">${buySub}</div>
           </td>
           <td>
-            <div class="price-val">\${sellVal}</div>
-            <div class="price-sub">\${sellSub}</div>
+            <div class="price-val">${sellVal}</div>
+            <div class="price-sub">${sellSub}</div>
           </td>
           <td style="color: var(--text-secondary); font-size: 0.875rem;">
-            \${r.src}
+            ${r.src}
           </td>
-        \`;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function renderSourceCompareTable() {
-      const tbody = document.getElementById('sources-tbody');
-      tbody.innerHTML = '';
-
-      const t = dictionary[currentLang];
-      const usdSources = apiData.rates.USD.sources || {};
-      const gbpSources = apiData.rates.GBP.sources || {};
-      
-      const allSourceKeys = ['bonbast', 'alanchand', 'navasan'];
-      const sourceDisplayNames = {
-        bonbast: 'Bonbast (Archive)',
-        alanchand: 'AlanChand',
-        navasan: 'Navasan'
-      };
-
-      allSourceKeys.forEach(src => {
-        const usdData = usdSources[src];
-        const gbpData = gbpSources[src];
-
-        const tr = document.createElement('tr');
-        
-        let usdText = '-';
-        if (usdData) {
-          usdText = \`\${formatNumber(usdData.buy)} / \${formatNumber(usdData.sell)} \${t.toman}\`;
-        } else if (src === 'navasan') {
-          usdText = \`<span style="color: var(--text-secondary); font-size: 0.8rem;">(Key Required)</span>\`;
-        }
-
-        let gbpText = '-';
-        if (gbpData) {
-          gbpText = \`\${formatNumber(gbpData.buy)} / \${formatNumber(gbpData.sell)} \${t.toman}\`;
-        } else if (src === 'navasan') {
-          gbpText = \`<span style="color: var(--text-secondary); font-size: 0.8rem;">(Key Required)</span>\`;
-        }
-
-        tr.innerHTML = \`
-          <td style="font-weight: 500;">\${sourceDisplayNames[src]}</td>
-          <td class="price-val" style="font-size: 0.95rem;">\${usdText}</td>
-          <td class="price-val" style="font-size: 0.95rem;">\${gbpText}</td>
-        \`;
+        `;
         tbody.appendChild(tr);
       });
     }

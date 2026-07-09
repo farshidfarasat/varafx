@@ -170,11 +170,6 @@ async function handleScheduled(env: any): Promise<void> {
         usd: ratesData.rates.USD,
         gbp: ratesData.rates.GBP,
         usdt: ratesData.rates.USDT,
-        sources: {
-          bonbast: ratesData.rates.USD.sources?.bonbast || null,
-          alanchand: ratesData.rates.USD.sources?.alanchand || null,
-          navasan: ratesData.rates.USD.sources?.navasan || null,
-        }
       };
 
       history.push(historyEntry);
@@ -216,11 +211,6 @@ function compileFallbackHistory(latestData: any): any[] {
       usd: { buy: entry.buy, sell: entry.sell },
       gbp: { buy: gbpEntry.buy, sell: gbpEntry.sell },
       usdt: { buy: latestData.rates.USDT.buy, sell: latestData.rates.USDT.sell },
-      sources: {
-        bonbast: { buy: entry.buy, sell: entry.sell },
-        alanchand: null,
-        navasan: null
-      }
     };
   });
 }
@@ -267,109 +257,58 @@ async function fetchFreshRates(env: any): Promise<any> {
     console.error("Navasan fetch failed:", navasanResult.status === "rejected" ? navasanResult.reason : "Unknown error");
   }
 
-  // 1. Compile USD rates
-  const usdBuys: number[] = [];
-  const usdSells: number[] = [];
-  const usdSources: any = {};
+  // 1. Select USD rates
+  let finalUsdBuy = 174000;
+  let finalUsdSell = 174500;
+  let usdSource = "Fallback";
 
-  if (bonbastUSD) {
-    usdSources["bonbast"] = { buy: bonbastUSD.buy, sell: bonbastUSD.sell, unit: "Toman" };
-  }
   if (alanchandUSD) {
-    usdBuys.push(alanchandUSD.buy);
-    usdSells.push(alanchandUSD.sell);
-    usdSources["alanchand"] = { buy: alanchandUSD.buy, sell: alanchandUSD.sell, unit: "Toman" };
-  }
-  if (navasanUSD) {
-    usdBuys.push(navasanUSD.buy);
-    usdSells.push(navasanUSD.sell);
-    usdSources["navasan"] = { buy: navasanUSD.buy, sell: navasanUSD.sell, unit: "Toman" };
-  }
-
-  // Fallback to Bonbast only if no real-time sources (Alanchand/Navasan) succeeded
-  if (usdBuys.length === 0 && bonbastUSD) {
-    usdBuys.push(bonbastUSD.buy);
-    usdSells.push(bonbastUSD.sell);
+    finalUsdBuy = alanchandUSD.buy;
+    finalUsdSell = alanchandUSD.sell;
+    usdSource = "AlanChand";
+  } else if (navasanUSD) {
+    finalUsdBuy = navasanUSD.buy;
+    finalUsdSell = navasanUSD.sell;
+    usdSource = "Navasan";
+  } else if (bonbastUSD) {
+    finalUsdBuy = bonbastUSD.buy;
+    finalUsdSell = bonbastUSD.sell;
+    usdSource = "Bonbast";
   }
 
-  // Default fallbacks if all failed
-  const finalUsdBuy = usdBuys.length > 0 ? Math.round(usdBuys.reduce((a, b) => a + b, 0) / usdBuys.length) : 174000;
-  const finalUsdSell = usdSells.length > 0 ? Math.round(usdSells.reduce((a, b) => a + b, 0) / usdSells.length) : 174500;
+  // 2. Select GBP rates
+  let finalGbpBuy = 231000;
+  let finalGbpSell = 232000;
+  let gbpSource = "Fallback";
 
-  // 2. Compile GBP rates
-  const gbpBuys: number[] = [];
-  const gbpSells: number[] = [];
-  const gbpSources: any = {};
-
-  if (bonbastGBP) {
-    gbpSources["bonbast"] = { buy: bonbastGBP.buy, sell: bonbastGBP.sell, unit: "Toman" };
-  }
   if (alanchandGBP) {
-    gbpBuys.push(alanchandGBP.buy);
-    gbpSells.push(alanchandGBP.sell);
-    gbpSources["alanchand"] = { buy: alanchandGBP.buy, sell: alanchandGBP.sell, unit: "Toman" };
-  }
-  if (navasanGBP) {
-    gbpBuys.push(navasanGBP.buy);
-    gbpSells.push(navasanGBP.sell);
-    gbpSources["navasan"] = { buy: navasanGBP.buy, sell: navasanGBP.sell, unit: "Toman" };
-  }
-
-  // Fallback to Bonbast only if no real-time sources (Alanchand/Navasan) succeeded
-  if (gbpBuys.length === 0 && bonbastGBP) {
-    gbpBuys.push(bonbastGBP.buy);
-    gbpSells.push(bonbastGBP.sell);
+    finalGbpBuy = alanchandGBP.buy;
+    finalGbpSell = alanchandGBP.sell;
+    gbpSource = "AlanChand";
+  } else if (navasanGBP) {
+    finalGbpBuy = navasanGBP.buy;
+    finalGbpSell = navasanGBP.sell;
+    gbpSource = "Navasan";
+  } else if (bonbastGBP) {
+    finalGbpBuy = bonbastGBP.buy;
+    finalGbpSell = bonbastGBP.sell;
+    gbpSource = "Bonbast";
   }
 
-  const finalGbpBuy = gbpBuys.length > 0 ? Math.round(gbpBuys.reduce((a, b) => a + b, 0) / gbpBuys.length) : 231000;
-  const finalGbpSell = gbpSells.length > 0 ? Math.round(gbpSells.reduce((a, b) => a + b, 0) / gbpSells.length) : 232000;
+  // 3. Select USDT rates
+  let finalUsdtBuy = finalUsdBuy;
+  let finalUsdtSell = finalUsdSell;
+  let usdtSource = "Fallback";
 
-  // 3. Compile USDT rates (crypto sources)
-  let bitpinPrice: number | null = null;
-  if (bitpinResult.status === "fulfilled" && bitpinResult.value) {
-    bitpinPrice = bitpinResult.value;
-  }
-
-  let wallexBid: number | null = null;
-  let wallexAsk: number | null = null;
-  let wallexLast: number | null = null;
   if (wallexResult.status === "fulfilled" && wallexResult.value) {
-    wallexBid = wallexResult.value.bid;
-    wallexAsk = wallexResult.value.ask;
-    wallexLast = wallexResult.value.last;
+    finalUsdtBuy = wallexResult.value.bid;
+    finalUsdtSell = wallexResult.value.ask;
+    usdtSource = "Wallex";
+  } else if (bitpinResult.status === "fulfilled" && bitpinResult.value) {
+    finalUsdtBuy = bitpinResult.value;
+    finalUsdtSell = bitpinResult.value;
+    usdtSource = "Bitpin";
   }
-
-  let usdtBuy = finalUsdBuy;
-  let usdtSell = finalUsdSell;
-  const usdtSources: any = {};
-
-  if (bitpinPrice) {
-    usdtSources["Bitpin"] = { price: bitpinPrice, unit: "Toman" };
-  }
-  if (wallexLast) {
-    usdtSources["Wallex"] = { buy: wallexBid, sell: wallexAsk, last: wallexLast, unit: "Toman" };
-  }
-
-  const usdtPricesToAverageBuy: number[] = [];
-  const usdtPricesToAverageSell: number[] = [];
-
-  if (bitpinPrice) {
-    usdtPricesToAverageBuy.push(bitpinPrice);
-    usdtPricesToAverageSell.push(bitpinPrice);
-  }
-  if (wallexBid && wallexAsk) {
-    usdtPricesToAverageBuy.push(wallexBid);
-    usdtPricesToAverageSell.push(wallexAsk);
-  }
-
-  if (usdtPricesToAverageBuy.length > 0) {
-    usdtBuy = Math.round(usdtPricesToAverageBuy.reduce((a, b) => a + b, 0) / usdtPricesToAverageBuy.length);
-  }
-  if (usdtPricesToAverageSell.length > 0) {
-    usdtSell = Math.round(usdtPricesToAverageSell.reduce((a, b) => a + b, 0) / usdtPricesToAverageSell.length);
-  }
-
-
 
   // Compile daily trends arrays for charts (used as fallback)
   let historyUSD: any[] = [];
@@ -395,25 +334,22 @@ async function fetchFreshRates(env: any): Promise<any> {
     timestamp: new Date().toISOString(),
     rates: {
       USD: {
-        source: usdBuys.length > 1 ? "Aggregated (Bonbast, Alanchand)" : "rial-exchange-rates-archive (Bonbast)",
+        source: usdSource,
         buy: finalUsdBuy,
         sell: finalUsdSell,
         unit: "Toman",
-        sources: usdSources,
       },
       GBP: {
-        source: gbpBuys.length > 1 ? "Aggregated (Bonbast, Alanchand)" : "rial-exchange-rates-archive (Bonbast)",
+        source: gbpSource,
         buy: finalGbpBuy,
         sell: finalGbpSell,
         unit: "Toman",
-        sources: gbpSources,
       },
       USDT: {
-        source: Object.keys(usdtSources).length > 0 ? "Aggregated (Bitpin, Wallex)" : "Fallback",
-        buy: usdtBuy,
-        sell: usdtSell,
+        source: usdtSource,
+        buy: finalUsdtBuy,
+        sell: finalUsdtSell,
         unit: "Toman",
-        sources: usdtSources,
       },
     },
     conversions: {

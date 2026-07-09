@@ -4,7 +4,7 @@ export const dashboardHtml = `<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VaraFX - Real-time IRR/Toman Exchange Rates</title>
-  <meta name="description" content="Live free-market and official exchange rates for USD, GBP, and USDT to Iranian Rial (IRR) and Toman.">
+  <meta name="description" content="Live free-market exchange rates for USD, GBP, and USDT to Iranian Rial (IRR) and Toman.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Vazirmatn:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -676,7 +676,7 @@ export const dashboardHtml = `<!DOCTYPE html>
         titleUsdChart: "USD Free Market Trend (7 Days)",
         titleGbpChart: "GBP Free Market Trend (7 Days)",
         titleApiDocs: "Developer API Documentation",
-        apiDocsDesc: "Integrate our aggregated exchange rate feed into your own services. The endpoint returns JSON containing aggregated live market rates, central bank official rates, bidirectional conversions, and 12-month historical pricing.",
+        apiDocsDesc: "Integrate our aggregated exchange rate feed into your own services. The endpoint returns JSON containing aggregated live market rates, bidirectional conversions, and 12-month historical pricing.",
         copyBtn: "Copy URL",
         copied: "Copied!",
         freeMarket: "Free Market",
@@ -707,7 +707,7 @@ export const dashboardHtml = `<!DOCTYPE html>
         titleUsdChart: "نمودار قیمت دلار بازار آزاد (۷ روز گذشته)",
         titleGbpChart: "نمودار قیمت پوند بازار آزاد (۷ روز گذشته)",
         titleApiDocs: "مستندات ای‌پی‌آی (API) توسعه‌دهندگان",
-        apiDocsDesc: "از اطلاعات نرخ‌های لحظه‌ای و ترکیب‌شده ما در نرم‌افزارها و پروژه‌های خود استفاده کنید. خروجی این بخش به فرمت استاندارد JSON است و شامل نرخ‌های آزاد، نرخ دولتی بانک مرکزی و تاریخچه ۱۲ ماهه می‌باشد.",
+        apiDocsDesc: "از اطلاعات نرخ‌های لحظه‌ای و ترکیب‌شده ما در نرم‌افزارها و پروژه‌های خود استفاده کنید. خروجی این بخش به فرمت استاندارد JSON است و شامل نرخ‌های آزاد و تاریخچه ۱۲ ماهه می‌باشد.",
         copyBtn: "کپی آدرس",
         copied: "کپی شد!",
         freeMarket: "بازار آزاد",
@@ -816,15 +816,11 @@ export const dashboardHtml = `<!DOCTYPE html>
       const usd = apiData.rates.USD;
       const gbp = apiData.rates.GBP;
       const usdt = apiData.rates.USDT;
-      const offUsd = apiData.official_rates.USD;
-      const offGbp = apiData.official_rates.GBP;
 
       const rows = [
         { name: 'USD', flag: '🇺🇸', type: t.freeMarket, isOfficial: false, buy: usd.buy, sell: usd.sell, unit: t.toman, src: usd.source },
         { name: 'USDT', flag: '🟢', type: t.freeMarket, isOfficial: false, buy: usdt.buy, sell: usdt.sell, unit: t.toman, src: usdt.source },
-        { name: 'GBP', flag: '🇬🇧', type: t.freeMarket, isOfficial: false, buy: gbp.buy, sell: gbp.sell, unit: t.toman, src: gbp.source },
-        { name: 'USD', flag: '🇺🇸', type: t.officialRate, isOfficial: true, buy: null, sell: Math.round(offUsd.rate / 10), unit: t.toman, src: 'CBI (Gov)' },
-        { name: 'GBP', flag: '🇬🇧', type: t.officialRate, isOfficial: true, buy: null, sell: Math.round(offGbp.rate / 10), unit: t.toman, src: 'CBI (Gov)' }
+        { name: 'GBP', flag: '🇬🇧', type: t.freeMarket, isOfficial: false, buy: gbp.buy, sell: gbp.sell, unit: t.toman, src: gbp.source }
       ];
 
       rows.forEach(r => {

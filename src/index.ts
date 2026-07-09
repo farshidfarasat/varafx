@@ -226,14 +226,13 @@ function compileFallbackHistory(latestData: any): any[] {
 }
 
 async function fetchFreshRates(env: any): Promise<any> {
-  const [archiveResult, alanchandResult, navasanResult, bitpinResult, wallexResult, erApiResult] = 
+  const [archiveResult, alanchandResult, navasanResult, bitpinResult, wallexResult] = 
     await Promise.allSettled([
       fetchArchiveRates(),
       fetchAlanchandRates(),
       fetchNavasanRates(env.NAVASAN_API_KEY),
       fetchBitpinUsdt(),
       fetchWallexUsdt(),
-      fetchOfficialRates(),
     ]);
 
   // Extract individual sources
@@ -274,8 +273,6 @@ async function fetchFreshRates(env: any): Promise<any> {
   const usdSources: any = {};
 
   if (bonbastUSD) {
-    usdBuys.push(bonbastUSD.buy);
-    usdSells.push(bonbastUSD.sell);
     usdSources["bonbast"] = { buy: bonbastUSD.buy, sell: bonbastUSD.sell, unit: "Toman" };
   }
   if (alanchandUSD) {
@@ -289,6 +286,12 @@ async function fetchFreshRates(env: any): Promise<any> {
     usdSources["navasan"] = { buy: navasanUSD.buy, sell: navasanUSD.sell, unit: "Toman" };
   }
 
+  // Fallback to Bonbast only if no real-time sources (Alanchand/Navasan) succeeded
+  if (usdBuys.length === 0 && bonbastUSD) {
+    usdBuys.push(bonbastUSD.buy);
+    usdSells.push(bonbastUSD.sell);
+  }
+
   // Default fallbacks if all failed
   const finalUsdBuy = usdBuys.length > 0 ? Math.round(usdBuys.reduce((a, b) => a + b, 0) / usdBuys.length) : 174000;
   const finalUsdSell = usdSells.length > 0 ? Math.round(usdSells.reduce((a, b) => a + b, 0) / usdSells.length) : 174500;
@@ -299,8 +302,6 @@ async function fetchFreshRates(env: any): Promise<any> {
   const gbpSources: any = {};
 
   if (bonbastGBP) {
-    gbpBuys.push(bonbastGBP.buy);
-    gbpSells.push(bonbastGBP.sell);
     gbpSources["bonbast"] = { buy: bonbastGBP.buy, sell: bonbastGBP.sell, unit: "Toman" };
   }
   if (alanchandGBP) {
@@ -312,6 +313,12 @@ async function fetchFreshRates(env: any): Promise<any> {
     gbpBuys.push(navasanGBP.buy);
     gbpSells.push(navasanGBP.sell);
     gbpSources["navasan"] = { buy: navasanGBP.buy, sell: navasanGBP.sell, unit: "Toman" };
+  }
+
+  // Fallback to Bonbast only if no real-time sources (Alanchand/Navasan) succeeded
+  if (gbpBuys.length === 0 && bonbastGBP) {
+    gbpBuys.push(bonbastGBP.buy);
+    gbpSells.push(bonbastGBP.sell);
   }
 
   const finalGbpBuy = gbpBuys.length > 0 ? Math.round(gbpBuys.reduce((a, b) => a + b, 0) / gbpBuys.length) : 231000;
@@ -362,15 +369,7 @@ async function fetchFreshRates(env: any): Promise<any> {
     usdtSell = Math.round(usdtPricesToAverageSell.reduce((a, b) => a + b, 0) / usdtPricesToAverageSell.length);
   }
 
-  // 4. Compile Official Rates
-  let officialUsdRate = 420000;
-  let officialGbpRate = 530000;
-  let officialSource = "ExchangeRate-API (Central Bank)";
 
-  if (erApiResult.status === "fulfilled" && erApiResult.value) {
-    officialUsdRate = erApiResult.value.usdToIrr;
-    officialGbpRate = erApiResult.value.gbpToIrr;
-  }
 
   // Compile daily trends arrays for charts (used as fallback)
   let historyUSD: any[] = [];
@@ -417,42 +416,24 @@ async function fetchFreshRates(env: any): Promise<any> {
         sources: usdtSources,
       },
     },
-    official_rates: {
-      USD: {
-        source: officialSource,
-        rate: officialUsdRate,
-        unit: "Rial",
-      },
-      GBP: {
-        source: officialSource,
-        rate: officialGbpRate,
-        unit: "Rial",
-      },
-    },
     conversions: {
       USD_TO_IRR: {
         free_market: finalUsdSell * 10,
-        official: officialUsdRate,
       },
       IRR_TO_USD: {
         free_market: parseFloat((1 / (finalUsdSell * 10)).toFixed(12)),
-        official: parseFloat((1 / officialUsdRate).toFixed(12)),
       },
       USD_TO_TMN: {
         free_market: finalUsdSell,
-        official: Math.round(officialUsdRate / 10),
       },
       TMN_TO_USD: {
         free_market: parseFloat((1 / finalUsdSell).toFixed(12)),
-        official: parseFloat((1 / (officialUsdRate / 10)).toFixed(12)),
       },
       GBP_TO_IRR: {
         free_market: finalGbpSell * 10,
-        official: officialGbpRate,
       },
       IRR_TO_GBP: {
         free_market: parseFloat((1 / (finalGbpSell * 10)).toFixed(12)),
-        official: parseFloat((1 / officialGbpRate).toFixed(12)),
       },
       USDT_TO_IRR: {
         free_market: usdtSell * 10,
@@ -593,18 +574,4 @@ async function fetchWallexUsdt(): Promise<{ bid: number; ask: number; last: numb
   };
 }
 
-async function fetchOfficialRates(): Promise<{ usdToIrr: number; gbpToIrr: number }> {
-  const response = await fetchWithTimeout("https://open.er-api.com/v6/latest/USD", {}, 5000);
-  if (!response.ok) throw new Error(`ER API HTTP status: ${response.status}`);
-  const data: any = await response.json();
-  if (data.result !== "success") throw new Error("ER API response state unsuccessful");
-  
-  const usdToIrr = parseFloat(data.rates.IRR);
-  const usdToGbp = parseFloat(data.rates.GBP);
-  const gbpToIrr = Math.round(usdToIrr / usdToGbp);
-  
-  return {
-    usdToIrr: Math.round(usdToIrr),
-    gbpToIrr,
-  };
-}
+

@@ -635,11 +635,7 @@ export const dashboardHtml = `<!DOCTYPE html>
         toman: "Toman",
         rial: "Rial",
         lastUpdated: "Last Aggregated: ",
-        errorLoading: "Failed to load exchange rates. Please refresh.",
-        titleSources: "Market Rates by Source",
-        thSrcName: "Source",
-        thSrcUsd: "USD Buy / Sell",
-        thSrcGbp: "GBP Buy / Sell"
+        errorLoading: "Failed to load exchange rates. Please refresh."
       },
       fa: {
         loading: "در حال دریافت قیمت‌های لحظه‌ای بازار...",
@@ -665,11 +661,7 @@ export const dashboardHtml = `<!DOCTYPE html>
         toman: "تومان",
         rial: "ریال",
         lastUpdated: "آخرین بروزرسانی: ",
-        errorLoading: "خطا در بارگذاری اطلاعات. لطفا صفحه را مجدداً بارگذاری کنید.",
-        titleSources: "نرخ بازار به تفکیک منابع اصلی",
-        thSrcName: "منبع نرخ",
-        thSrcUsd: "خرید / فروش دلار",
-        thSrcGbp: "خرید / فروش پوند"
+        errorLoading: "خطا در بارگذاری اطلاعات. لطفا صفحه را مجدداً بارگذاری کنید."
       }
     };
 
@@ -736,6 +728,20 @@ export const dashboardHtml = `<!DOCTYPE html>
         console.error(err);
         document.getElementById('loading-text').innerText = dictionary[currentLang].errorLoading;
       }
+
+      setInterval(async () => {
+        try {
+          const ratesRes = await fetch('/api/rates');
+          if (ratesRes.ok) {
+            apiData = await ratesRes.json();
+            renderRatesTable();
+            renderConnections();
+            updateLastUpdated();
+          }
+        } catch (err) {
+          console.error("Periodic rates fetch failed:", err);
+        }
+      }, 60000);
     }
 
     function formatNumber(num) {
@@ -764,7 +770,9 @@ export const dashboardHtml = `<!DOCTYPE html>
         rows.push({ name: 'USD (AlanChand)', flag: '🇺🇸', type: t.freeMarket, isOfficial: false, buy: usd.sources.alanchand.buy, sell: usd.sources.alanchand.sell, unit: t.toman, src: 'AlanChand' });
       }
       if (usd.sources && usd.sources.bonbast) {
-        rows.push({ name: 'USD (Bonbast)', flag: '🇺🇸', type: t.freeMarket, isOfficial: false, buy: usd.sources.bonbast.buy, sell: usd.sources.bonbast.sell, unit: t.toman, src: 'Bonbast (Archive)' });
+        const b = usd.sources.bonbast;
+        const label = b.mode === 'live' ? 'Bonbast (Live)' : (b.date ? 'Bonbast (Archive ' + b.date + ')' : 'Bonbast (Archive)');
+        rows.push({ name: 'USD (Bonbast)', flag: '🇺🇸', type: t.freeMarket, isOfficial: false, buy: b.buy, sell: b.sell, unit: t.toman, src: label });
       }
       if (rows.length === 0) {
         rows.push({ name: 'USD', flag: '🇺🇸', type: t.freeMarket, isOfficial: false, buy: usd.buy, sell: usd.sell, unit: t.toman, src: usd.source });
@@ -777,7 +785,9 @@ export const dashboardHtml = `<!DOCTYPE html>
         rows.push({ name: 'GBP (AlanChand)', flag: '🇬🇧', type: t.freeMarket, isOfficial: false, buy: gbp.sources.alanchand.buy, sell: gbp.sources.alanchand.sell, unit: t.toman, src: 'AlanChand' });
       }
       if (gbp.sources && gbp.sources.bonbast) {
-        rows.push({ name: 'GBP (Bonbast)', flag: '🇬🇧', type: t.freeMarket, isOfficial: false, buy: gbp.sources.bonbast.buy, sell: gbp.sources.bonbast.sell, unit: t.toman, src: 'Bonbast (Archive)' });
+        const b = gbp.sources.bonbast;
+        const label = b.mode === 'live' ? 'Bonbast (Live)' : (b.date ? 'Bonbast (Archive ' + b.date + ')' : 'Bonbast (Archive)');
+        rows.push({ name: 'GBP (Bonbast)', flag: '🇬🇧', type: t.freeMarket, isOfficial: false, buy: b.buy, sell: b.sell, unit: t.toman, src: label });
       }
       if (rows.length === gbpStart) {
         rows.push({ name: 'GBP', flag: '🇬🇧', type: t.freeMarket, isOfficial: false, buy: gbp.buy, sell: gbp.sell, unit: t.toman, src: gbp.source });
@@ -822,7 +832,7 @@ export const dashboardHtml = `<!DOCTYPE html>
       if (!apiData || !apiData.connections) return;
 
       const t = dictionary[currentLang];
-      const services = ['Bonbast', 'Bon-bast', 'Alanchand', 'Navasan', 'Bitpin', 'Wallex', 'Nobitex'];
+      const services = ['Bonbast (Live)', 'Bonbast (Archive)', 'Alanchand', 'Navasan', 'Bitpin', 'Wallex', 'Nobitex'];
 
       services.forEach(name => {
         const isConnected = apiData.connections[name];
@@ -901,6 +911,7 @@ export const dashboardHtml = `<!DOCTYPE html>
     }
 
     function renderSingleChart(containerId, dataPoints, lineClass, areaClass, gradientId) {
+      if (!dataPoints || dataPoints.length < 2) return;
       const container = document.getElementById(containerId);
       container.innerHTML = '';
 

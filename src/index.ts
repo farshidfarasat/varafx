@@ -1,5 +1,10 @@
 import { dashboardHtml } from "./dashboard";
 
+interface Env {
+  KV?: KVNamespace;
+  NAVASAN_API_KEY?: string;
+}
+
 interface CacheStore {
   data: any;
   timestamp: number;
@@ -7,9 +12,10 @@ interface CacheStore {
 
 let inMemoryCache: CacheStore | null = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+const KV_READ_TTL = 35 * 60 * 1000; // 35 minutes in milliseconds
 
 export default {
-  async fetch(request: Request, env: any, ctx: any): Promise<Response> {
+  async fetch(request: Request, env: Env, _ctx: any): Promise<Response> {
     const url = new URL(request.url);
 
     // Handle CORS preflight requests
@@ -118,18 +124,18 @@ export default {
     );
   },
 
-  async scheduled(event: any, env: any, ctx: any): Promise<void> {
+  async scheduled(_event: any, env: Env, ctx: any): Promise<void> {
     ctx.waitUntil(handleScheduled(env));
   },
 };
 
-async function getCachedRates(env: any): Promise<any> {
+async function getCachedRates(env: Env): Promise<any> {
   if (env.KV) {
     const cachedStr = await env.KV.get("rates_latest");
     if (cachedStr) {
       try {
         const cached = JSON.parse(cachedStr);
-        if (cached.timestamp && (Date.now() - new Date(cached.timestamp).getTime()) < CACHE_TTL) {
+        if (cached.timestamp && (Date.now() - new Date(cached.timestamp).getTime()) < KV_READ_TTL) {
           return cached;
         }
       } catch (e) {
@@ -154,7 +160,7 @@ async function getCachedRates(env: any): Promise<any> {
   return data;
 }
 
-async function handleScheduled(env: any): Promise<void> {
+async function handleScheduled(env: Env): Promise<void> {
   console.log("Scheduled cron running...");
   try {
     const ratesData = await fetchFreshRates(env);
@@ -222,15 +228,14 @@ function compileFallbackHistory(latestData: any): any[] {
   });
 }
 
-async function fetchFreshRates(env: any): Promise<any> {
+async function fetchFreshRates(env: Env): Promise<any> {
   const [
     archiveResult, 
     alanchandResult, 
     navasanResult, 
     bitpinResult, 
     wallexResult,
-    bonbastCheck,
-    bonbastMirrorCheck,
+    bonbastLiveResult,
     nobitexCheck
   ] = await Promise.allSettled([
     fetchArchiveRates(),
@@ -238,22 +243,36 @@ async function fetchFreshRates(env: any): Promise<any> {
     fetchNavasanRates(env.NAVASAN_API_KEY),
     fetchBitpinUsdt(),
     fetchWallexUsdt(),
-    fetchWithTimeout("https://www.bonbast.com", { headers: { "User-Agent": "Mozilla/5.0" } }, 4000),
-    fetchWithTimeout("https://www.bon-bast.com", { headers: { "User-Agent": "Mozilla/5.0" } }, 4000),
+    fetchBonbastLive(),
     fetchWithTimeout("https://api.nobitex.ir/v2/orderbook/USDTIRT", { headers: { "User-Agent": "Mozilla/5.0" } }, 4000)
   ]);
 
   // Extract individual sources
   let bonbastUSD = null;
   let bonbastGBP = null;
-  if (archiveResult.status === "fulfilled" && archiveResult.value) {
-    const archiveData = archiveResult.value;
-    const dates = Object.keys(archiveData).sort();
-    if (dates.length > 0) {
-      const latestDate = dates[dates.length - 1];
-      const latestRates = archiveData[latestDate];
-      if (latestRates.usd) bonbastUSD = latestRates.usd;
-      if (latestRates.gbp) bonbastGBP = latestRates.gbp;
+  let bonbastMode: "live" | "archive" | null = null;
+  let bonbastDate: string | null = null;
+
+  if (bonbastLiveResult.status === "fulfilled" && bonbastLiveResult.value) {
+    bonbastUSD = bonbastLiveResult.value.usd;
+    bonbastGBP = bonbastLiveResult.value.gbp;
+    bonbastMode = "live";
+  } else {
+    if (bonbastLiveResult.status === "rejected") {
+      console.error("Bonbast Live fetch failed:", bonbastLiveResult.reason);
+    }
+    // Fallback to daily GitHub archive
+    if (archiveResult.status === "fulfilled" && archiveResult.value) {
+      const archiveData = archiveResult.value;
+      const dates = Object.keys(archiveData).sort();
+      if (dates.length > 0) {
+        const latestDate = dates[dates.length - 1];
+        const latestRates = archiveData[latestDate];
+        if (latestRates.usd) bonbastUSD = latestRates.usd;
+        if (latestRates.gbp) bonbastGBP = latestRates.gbp;
+        bonbastMode = "archive";
+        bonbastDate = latestDate;
+      }
     }
   }
 
@@ -275,12 +294,16 @@ async function fetchFreshRates(env: any): Promise<any> {
     console.error("Navasan fetch failed:", navasanResult.status === "rejected" ? navasanResult.reason : "Unknown error");
   }
 
-  // 1. Select USD rates
+  // 1. Select USD rates: Bonbast (Live) -> AlanChand -> Navasan -> Bonbast (Archive) -> Fallback
   let finalUsdBuy = 174000;
   let finalUsdSell = 174500;
   let usdSource = "Fallback";
 
-  if (alanchandUSD) {
+  if (bonbastMode === "live" && bonbastUSD) {
+    finalUsdBuy = bonbastUSD.buy;
+    finalUsdSell = bonbastUSD.sell;
+    usdSource = "Bonbast (Live)";
+  } else if (alanchandUSD) {
     finalUsdBuy = alanchandUSD.buy;
     finalUsdSell = alanchandUSD.sell;
     usdSource = "AlanChand";
@@ -288,18 +311,22 @@ async function fetchFreshRates(env: any): Promise<any> {
     finalUsdBuy = navasanUSD.buy;
     finalUsdSell = navasanUSD.sell;
     usdSource = "Navasan";
-  } else if (bonbastUSD) {
+  } else if (bonbastMode === "archive" && bonbastUSD) {
     finalUsdBuy = bonbastUSD.buy;
     finalUsdSell = bonbastUSD.sell;
-    usdSource = "Bonbast";
+    usdSource = bonbastDate ? `Bonbast (Archive ${bonbastDate})` : "Bonbast (Archive)";
   }
 
-  // 2. Select GBP rates
+  // 2. Select GBP rates: Bonbast (Live) -> AlanChand -> Navasan -> Bonbast (Archive) -> Fallback
   let finalGbpBuy = 231000;
   let finalGbpSell = 232000;
   let gbpSource = "Fallback";
 
-  if (alanchandGBP) {
+  if (bonbastMode === "live" && bonbastGBP) {
+    finalGbpBuy = bonbastGBP.buy;
+    finalGbpSell = bonbastGBP.sell;
+    gbpSource = "Bonbast (Live)";
+  } else if (alanchandGBP) {
     finalGbpBuy = alanchandGBP.buy;
     finalGbpSell = alanchandGBP.sell;
     gbpSource = "AlanChand";
@@ -307,10 +334,10 @@ async function fetchFreshRates(env: any): Promise<any> {
     finalGbpBuy = navasanGBP.buy;
     finalGbpSell = navasanGBP.sell;
     gbpSource = "Navasan";
-  } else if (bonbastGBP) {
+  } else if (bonbastMode === "archive" && bonbastGBP) {
     finalGbpBuy = bonbastGBP.buy;
     finalGbpSell = bonbastGBP.sell;
-    gbpSource = "Bonbast";
+    gbpSource = bonbastDate ? `Bonbast (Archive ${bonbastDate})` : "Bonbast (Archive)";
   }
 
   // 3. Select USDT rates
@@ -319,8 +346,8 @@ async function fetchFreshRates(env: any): Promise<any> {
   let usdtSource = "Fallback";
 
   if (bitpinResult.status === "fulfilled" && bitpinResult.value) {
-    finalUsdtBuy = bitpinResult.value;
-    finalUsdtSell = bitpinResult.value;
+    finalUsdtBuy = bitpinResult.value.buy;
+    finalUsdtSell = bitpinResult.value.sell;
     usdtSource = "Bitpin";
   } else if (wallexResult.status === "fulfilled" && wallexResult.value) {
     finalUsdtBuy = wallexResult.value.bid;
@@ -360,7 +387,12 @@ async function fetchFreshRates(env: any): Promise<any> {
         unit: "Toman",
         sources: {
           alanchand: alanchandUSD ? { buy: alanchandUSD.buy, sell: alanchandUSD.sell } : null,
-          bonbast: bonbastUSD ? { buy: bonbastUSD.buy, sell: bonbastUSD.sell } : null
+          bonbast: bonbastUSD ? {
+            buy: bonbastUSD.buy,
+            sell: bonbastUSD.sell,
+            mode: bonbastMode,
+            date: bonbastDate
+          } : null
         }
       },
       GBP: {
@@ -370,7 +402,12 @@ async function fetchFreshRates(env: any): Promise<any> {
         unit: "Toman",
         sources: {
           alanchand: alanchandGBP ? { buy: alanchandGBP.buy, sell: alanchandGBP.sell } : null,
-          bonbast: bonbastGBP ? { buy: bonbastGBP.buy, sell: bonbastGBP.sell } : null
+          bonbast: bonbastGBP ? {
+            buy: bonbastGBP.buy,
+            sell: bonbastGBP.sell,
+            mode: bonbastMode,
+            date: bonbastDate
+          } : null
         }
       },
       USDT: {
@@ -414,8 +451,8 @@ async function fetchFreshRates(env: any): Promise<any> {
       GBP: historyGBP,
     },
     connections: {
-      "Bonbast": archiveResult.status === "fulfilled" || (bonbastCheck.status === "fulfilled" && bonbastCheck.value.status === 200),
-      "Bon-bast": bonbastMirrorCheck.status === "fulfilled" && bonbastMirrorCheck.value.status === 200,
+      "Bonbast (Live)": bonbastLiveResult.status === "fulfilled",
+      "Bonbast (Archive)": archiveResult.status === "fulfilled",
       "Alanchand": alanchandResult.status === "fulfilled",
       "Navasan": navasanResult.status === "fulfilled",
       "Bitpin": bitpinResult.status === "fulfilled",
@@ -519,7 +556,7 @@ async function fetchNavasanRates(apiKey?: string): Promise<{ usd: { buy: number;
   };
 }
 
-async function fetchBitpinUsdt(): Promise<number> {
+async function fetchBitpinUsdt(): Promise<{ buy: number; sell: number }> {
   const response = await fetchWithTimeout("https://api.bitpin.ir/v1/mkt/markets/", {
     headers: {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) VaraFX/1.0.0",
@@ -530,7 +567,10 @@ async function fetchBitpinUsdt(): Promise<number> {
   const results = data.results || [];
   const usdtIrt = results.find((m: any) => m.code === "USDT_IRT");
   if (!usdtIrt || !usdtIrt.price) throw new Error("USDT_IRT code not found on Bitpin");
-  return Math.round(parseFloat(usdtIrt.price));
+  
+  const price = Math.round(parseFloat(usdtIrt.price));
+  // Bitpin does not provide separate bid/ask spread in the markets list, so buy == sell == last price.
+  return { buy: price, sell: price };
 }
 
 async function fetchWallexUsdt(): Promise<{ bid: number; ask: number; last: number }> {
@@ -550,4 +590,82 @@ async function fetchWallexUsdt(): Promise<{ bid: number; ask: number; last: numb
   };
 }
 
+async function fetchBonbastLive(): Promise<{ usd: { buy: number; sell: number }; gbp: { buy: number; sell: number } }> {
+  const ua = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
+  const cookie = "cookieconsent_status=true; st_bb=0";
 
+  const attempt = async (host: string) => {
+    // Step A: GET the home page
+    const getRes = await fetchWithTimeout(
+      `https://${host}/`,
+      {
+        headers: {
+          "User-Agent": ua,
+          "Cookie": cookie,
+          "Referer": `https://${host}/`,
+        },
+      },
+      6000
+    );
+    if (!getRes.ok) {
+      throw new Error(`Failed to GET ${host}: ${getRes.status}`);
+    }
+    const html = await getRes.text();
+
+    // Step B: Extract token from the HTML
+    const match = html.match(/param\s*[=:]\s*"([^"]+)"/m);
+    if (!match) {
+      throw new Error(`Token param not found in ${host} HTML`);
+    }
+    const token = match[1];
+
+    // Step C: POST to /json
+    const postRes = await fetchWithTimeout(
+      `https://${host}/json`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest",
+          "Origin": `https://${host}`,
+          "Referer": `https://${host}/`,
+          "Cookie": cookie,
+          "User-Agent": ua,
+        },
+        body: "param=" + encodeURIComponent(token),
+      },
+      6000
+    );
+    if (!postRes.ok) {
+      throw new Error(`Failed to POST to ${host}/json: ${postRes.status}`);
+    }
+    const data: any = await postRes.json();
+
+    // Step D: Parse JSON response
+    if (data && data.reset) {
+      throw new Error(`Token rejected by ${host} (reset response)`);
+    }
+
+    const usdSell = parseInt(data?.usd1);
+    const usdBuy = parseInt(data?.usd2);
+    const gbpSell = parseInt(data?.gbp1);
+    const gbpBuy = parseInt(data?.gbp2);
+
+    if (isNaN(usdSell) || usdSell === 0 || isNaN(usdBuy) || usdBuy === 0 ||
+        isNaN(gbpSell) || gbpSell === 0 || isNaN(gbpBuy) || gbpBuy === 0) {
+      throw new Error(`Invalid rates parsed from ${host} JSON response`);
+    }
+
+    return {
+      usd: { buy: usdBuy, sell: usdSell },
+      gbp: { buy: gbpBuy, sell: gbpSell },
+    };
+  };
+
+  try {
+    return await attempt("bonbast.com");
+  } catch (error: any) {
+    console.warn(`Primary Bonbast scrape failed: ${error.message}. Retrying on mirror...`);
+    return await attempt("www.bon-bast.com");
+  }
+}

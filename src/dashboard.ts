@@ -758,11 +758,30 @@ export const dashboardHtml = `<!DOCTYPE html>
       const gbp = apiData.rates.GBP;
       const usdt = apiData.rates.USDT;
 
-      const rows = [
-        { name: 'USD', flag: '🇺🇸', type: t.freeMarket, isOfficial: false, buy: usd.buy, sell: usd.sell, unit: t.toman, src: usd.source },
-        { name: 'USDT', flag: '🟢', type: t.freeMarket, isOfficial: false, buy: usdt.buy, sell: usdt.sell, unit: t.toman, src: usdt.source },
-        { name: 'GBP', flag: '🇬🇧', type: t.freeMarket, isOfficial: false, buy: gbp.buy, sell: gbp.sell, unit: t.toman, src: gbp.source }
-      ];
+      const rows = [];
+      
+      if (usd.sources && usd.sources.alanchand) {
+        rows.push({ name: 'USD (AlanChand)', flag: '🇺🇸', type: t.freeMarket, isOfficial: false, buy: usd.sources.alanchand.buy, sell: usd.sources.alanchand.sell, unit: t.toman, src: 'AlanChand' });
+      }
+      if (usd.sources && usd.sources.bonbast) {
+        rows.push({ name: 'USD (Bonbast)', flag: '🇺🇸', type: t.freeMarket, isOfficial: false, buy: usd.sources.bonbast.buy, sell: usd.sources.bonbast.sell, unit: t.toman, src: 'Bonbast (Archive)' });
+      }
+      if (rows.length === 0) {
+        rows.push({ name: 'USD', flag: '🇺🇸', type: t.freeMarket, isOfficial: false, buy: usd.buy, sell: usd.sell, unit: t.toman, src: usd.source });
+      }
+
+      rows.push({ name: 'USDT', flag: '🟢', type: t.freeMarket, isOfficial: false, buy: usdt.buy, sell: usdt.sell, unit: t.toman, src: usdt.source });
+
+      const gbpStart = rows.length;
+      if (gbp.sources && gbp.sources.alanchand) {
+        rows.push({ name: 'GBP (AlanChand)', flag: '🇬🇧', type: t.freeMarket, isOfficial: false, buy: gbp.sources.alanchand.buy, sell: gbp.sources.alanchand.sell, unit: t.toman, src: 'AlanChand' });
+      }
+      if (gbp.sources && gbp.sources.bonbast) {
+        rows.push({ name: 'GBP (Bonbast)', flag: '🇬🇧', type: t.freeMarket, isOfficial: false, buy: gbp.sources.bonbast.buy, sell: gbp.sources.bonbast.sell, unit: t.toman, src: 'Bonbast (Archive)' });
+      }
+      if (rows.length === gbpStart) {
+        rows.push({ name: 'GBP', flag: '🇬🇧', type: t.freeMarket, isOfficial: false, buy: gbp.buy, sell: gbp.sell, unit: t.toman, src: gbp.source });
+      }
 
       rows.forEach(r => {
         const tr = document.createElement('tr');

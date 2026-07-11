@@ -358,12 +358,20 @@ async function fetchFreshRates(env: any): Promise<any> {
         buy: finalUsdBuy,
         sell: finalUsdSell,
         unit: "Toman",
+        sources: {
+          alanchand: alanchandUSD ? { buy: alanchandUSD.buy, sell: alanchandUSD.sell } : null,
+          bonbast: bonbastUSD ? { buy: bonbastUSD.buy, sell: bonbastUSD.sell } : null
+        }
       },
       GBP: {
         source: gbpSource,
         buy: finalGbpBuy,
         sell: finalGbpSell,
         unit: "Toman",
+        sources: {
+          alanchand: alanchandGBP ? { buy: alanchandGBP.buy, sell: alanchandGBP.sell } : null,
+          bonbast: bonbastGBP ? { buy: bonbastGBP.buy, sell: bonbastGBP.sell } : null
+        }
       },
       USDT: {
         source: usdtSource,

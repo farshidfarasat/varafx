@@ -7,7 +7,7 @@ account_id = "70911c2a8cdf1844b86156a3b2a2bc3a"
 enabled = true
 
 [triggers]
-crons = ["*/15 * * * *"]
+crons = ["*/30 * * * *"]
 
 [[kv_namespaces]]
 binding = "KV"

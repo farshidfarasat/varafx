@@ -567,42 +567,11 @@ export const dashboardHtml = `<!DOCTYPE html>
         <p class="last-updated" id="last-updated-text">Aggregated just now</p>
       </div>
 
-      <!-- Live Converter Card -->
+      <!-- Service Connections Status Card -->
       <div class="glass-card">
-        <div class="card-title" id="title-converter">Currency Converter</div>
-        <div class="calc-group">
-          <div class="calc-input-wrapper">
-            <input type="number" class="calc-input" id="calc-source-val" value="1" oninput="calculateConversion()">
-            <select class="calc-currency-select" id="calc-source-curr" onchange="calculateConversion()">
-              <option value="USD">USD</option>
-              <option value="GBP">GBP</option>
-              <option value="USDT">USDT</option>
-              <option value="TMN">TMN</option>
-              <option value="IRR">IRR</option>
-            </select>
-            <span class="calc-currency-label" id="label-from">From</span>
-          </div>
-
-          <div class="calc-arrow">↓</div>
-
-          <div class="calc-input-wrapper">
-            <input type="text" class="calc-input" id="calc-target-val" readonly>
-            <select class="calc-currency-select" id="calc-target-curr" onchange="calculateConversion()">
-              <option value="TMN" selected>TMN</option>
-              <option value="IRR">IRR</option>
-              <option value="USD">USD</option>
-              <option value="GBP">GBP</option>
-              <option value="USDT">USDT</option>
-            </select>
-            <span class="calc-currency-label" id="label-to">To</span>
-          </div>
-          
-          <div style="margin-top: 0.5rem;">
-            <div class="card-title" id="title-usdt-sources" style="font-size: 1rem; margin-bottom: 0.5rem;">USDT Sources</div>
-            <div class="source-list" id="usdt-sources-list">
-              <!-- USDT Sources populated by JS -->
-            </div>
-          </div>
+        <div class="card-title" id="title-connections">Service Connection Status</div>
+        <div class="connections-list" id="connections-list" style="display: flex; flex-direction: column; gap: 0.85rem; margin-top: 1rem;">
+          <!-- Connections populated by JS -->
         </div>
       </div>
     </div>
@@ -610,13 +579,13 @@ export const dashboardHtml = `<!DOCTYPE html>
     <!-- Charts Section -->
     <div class="charts-grid">
       <div class="glass-card">
-        <div class="card-title" id="title-usd-chart">USD Free Market Trend (7 Days)</div>
+        <div class="card-title" id="title-usd-chart">USD Free Market Trend (30 Days)</div>
         <div class="chart-container" id="usd-chart-container">
           <!-- SVG line chart populated by JS -->
         </div>
       </div>
       <div class="glass-card">
-        <div class="card-title" id="title-gbp-chart">GBP Free Market Trend (7 Days)</div>
+        <div class="card-title" id="title-gbp-chart">GBP Free Market Trend (30 Days)</div>
         <div class="chart-container" id="gbp-chart-container">
           <!-- SVG line chart populated by JS -->
         </div>
@@ -652,12 +621,11 @@ export const dashboardHtml = `<!DOCTYPE html>
         thSell: "Sell Rate",
         thSource: "Primary Source",
         titleRates: "Aggregated Exchange Rates",
-        titleConverter: "Currency Converter",
-        titleUsdtSources: "USDT Exchanges",
-        labelFrom: "From",
-        labelTo: "To",
-        titleUsdChart: "USD Free Market Trend (7 Days)",
-        titleGbpChart: "GBP Free Market Trend (7 Days)",
+        titleConnections: "Service Connection Status",
+        connected: "Connected",
+        disconnected: "Disconnected",
+        titleUsdChart: "USD Free Market Trend (30 Days)",
+        titleGbpChart: "GBP Free Market Trend (30 Days)",
         titleApiDocs: "Developer API Documentation",
         apiDocsDesc: "Integrate our aggregated exchange rate feed into your own services. The endpoint returns JSON containing aggregated live market rates, bidirectional conversions, and 12-month historical pricing.",
         copyBtn: "Copy URL",
@@ -683,12 +651,11 @@ export const dashboardHtml = `<!DOCTYPE html>
         thSell: "فروش به شما",
         thSource: "منبع اصلی",
         titleRates: "نرخ‌های ترکیب‌شده ارزها",
-        titleConverter: "مبدل پیشرفته ارز",
-        titleUsdtSources: "صرافی‌های تتر",
-        labelFrom: "از",
-        labelTo: "به",
-        titleUsdChart: "نمودار قیمت دلار بازار آزاد (۷ روز گذشته)",
-        titleGbpChart: "نمودار قیمت پوند بازار آزاد (۷ روز گذشته)",
+        titleConnections: "وضعیت اتصال سرویس‌ها",
+        connected: "متصل",
+        disconnected: "قطع",
+        titleUsdChart: "نمودار قیمت دلار بازار آزاد (۳۰ روز گذشته)",
+        titleGbpChart: "نمودار قیمت پوند بازار آزاد (۳۰ روز گذشته)",
         titleApiDocs: "مستندات ای‌پی‌آی (API) توسعه‌دهندگان",
         apiDocsDesc: "از اطلاعات نرخ‌های لحظه‌ای و ترکیب‌شده ما در نرم‌افزارها و پروژه‌های خود استفاده کنید. خروجی این بخش به فرمت استاندارد JSON است و شامل نرخ‌های آزاد و تاریخچه ۱۲ ماهه می‌باشد.",
         copyBtn: "کپی آدرس",
@@ -725,10 +692,7 @@ export const dashboardHtml = `<!DOCTYPE html>
       document.getElementById('th-sell').innerText = t.thSell;
       document.getElementById('th-source').innerText = t.thSource;
       document.getElementById('title-rates').innerText = t.titleRates;
-      document.getElementById('title-converter').innerText = t.titleConverter;
-      document.getElementById('title-usdt-sources').innerText = t.titleUsdtSources;
-      document.getElementById('label-from').innerText = t.labelFrom;
-      document.getElementById('label-to').innerText = t.labelTo;
+      document.getElementById('title-connections').innerText = t.titleConnections;
       document.getElementById('title-usd-chart').innerText = t.titleUsdChart;
       document.getElementById('title-gbp-chart').innerText = t.titleGbpChart;
       document.getElementById('title-api-docs').innerText = t.titleApiDocs;
@@ -738,7 +702,7 @@ export const dashboardHtml = `<!DOCTYPE html>
 
       if (apiData) {
         renderRatesTable();
-        renderUsdtSources();
+        renderConnections();
         renderCharts();
         updateLastUpdated();
       }
@@ -763,9 +727,8 @@ export const dashboardHtml = `<!DOCTYPE html>
         }
 
         renderRatesTable();
-        renderUsdtSources();
+        renderConnections();
         renderCharts();
-        calculateConversion();
         updateLastUpdated();
         
         document.getElementById('loading').classList.add('hidden');
@@ -834,71 +797,52 @@ export const dashboardHtml = `<!DOCTYPE html>
       });
     }
 
-    function renderUsdtSources() {
-      const list = document.getElementById('usdt-sources-list');
+    function renderConnections() {
+      const list = document.getElementById('connections-list');
       list.innerHTML = '';
-      const sources = apiData.rates.USDT.sources || {};
-      
-      for (const [name, info] of Object.entries(sources)) {
+      if (!apiData || !apiData.connections) return;
+
+      const t = dictionary[currentLang];
+      const services = ['Bonbast', 'Bon-bast', 'Alanchand', 'Navasan', 'Bitpin', 'Wallex', 'Nobitex'];
+
+      services.forEach(name => {
+        const isConnected = apiData.connections[name];
+        
         const item = document.createElement('div');
-        item.className = 'source-item';
-        let priceStr = '';
-        if (info.sell && info.buy) {
-          priceStr = \`\${formatNumber(info.sell)} TMN\`;
-        } else if (info.price) {
-          priceStr = \`\${formatNumber(info.price)} TMN\`;
+        item.className = 'source-item'; // Reuse source-item style for sleek glassmorphism
+        item.style.display = 'flex';
+        item.style.justifyContent = 'space-between';
+        item.style.alignItems = 'center';
+        item.style.padding = '0.75rem 1rem';
+        item.style.marginBottom = '0.5rem';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.innerText = name;
+        nameSpan.style.fontWeight = '500';
+        nameSpan.style.fontSize = '0.95rem';
+
+        const statusBadge = document.createElement('span');
+        statusBadge.style.fontSize = '0.75rem';
+        statusBadge.style.padding = '0.25rem 0.5rem';
+        statusBadge.style.borderRadius = '6px';
+        statusBadge.style.fontWeight = '600';
+        
+        if (isConnected) {
+          statusBadge.innerText = t.connected;
+          statusBadge.style.background = 'rgba(16, 185, 129, 0.15)';
+          statusBadge.style.color = '#10b981';
+          statusBadge.style.border = '1px solid rgba(16, 185, 129, 0.2)';
+        } else {
+          statusBadge.innerText = t.disconnected;
+          statusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+          statusBadge.style.color = '#ef4444';
+          statusBadge.style.border = '1px solid rgba(239, 68, 68, 0.2)';
         }
 
-        item.innerHTML = \`
-          <div class="source-name">
-            <span class="source-dot"></span>
-            <span>\${name}</span>
-          </div>
-          <div class="price-val" style="font-size: 0.95rem;">\${priceStr}</div>
-        \`;
+        item.appendChild(nameSpan);
+        item.appendChild(statusBadge);
         list.appendChild(item);
-      }
-    }
-
-    function calculateConversion() {
-      if (!apiData) return;
-
-      const sourceVal = parseFloat(document.getElementById('calc-source-val').value) || 0;
-      const sourceCurr = document.getElementById('calc-source-curr').value;
-      const targetCurr = document.getElementById('calc-target-curr').value;
-      const targetInput = document.getElementById('calc-target-val');
-
-      if (sourceCurr === targetCurr) {
-        targetInput.value = formatNumber(sourceVal);
-        return;
-      }
-
-      let valueInToman = 0;
-      const usdMarket = apiData.rates.USD.sell;
-      const gbpMarket = apiData.rates.GBP.sell;
-      const usdtMarket = apiData.rates.USDT.sell;
-
-      if (sourceCurr === 'USD') valueInToman = sourceVal * usdMarket;
-      else if (sourceCurr === 'GBP') valueInToman = sourceVal * gbpMarket;
-      else if (sourceCurr === 'USDT') valueInToman = sourceVal * usdtMarket;
-      else if (sourceCurr === 'TMN') valueInToman = sourceVal;
-      else if (sourceCurr === 'IRR') valueInToman = sourceVal / 10;
-
-      let targetVal = 0;
-      if (targetCurr === 'USD') targetVal = valueInToman / usdMarket;
-      else if (targetCurr === 'GBP') targetVal = valueInToman / gbpMarket;
-      else if (targetCurr === 'USDT') targetVal = valueInToman / usdtMarket;
-      else if (targetCurr === 'TMN') targetVal = valueInToman;
-      else if (targetCurr === 'IRR') targetVal = valueInToman * 10;
-
-      let formattedVal = '';
-      if (targetCurr === 'TMN' || targetCurr === 'IRR') {
-        formattedVal = formatNumber(Math.round(targetVal));
-      } else {
-        formattedVal = targetVal.toLocaleString(currentLang === 'fa' ? 'fa-IR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-      }
-
-      targetInput.value = formattedVal;
+      });
     }
 
     function renderCharts() {
@@ -907,14 +851,14 @@ export const dashboardHtml = `<!DOCTYPE html>
       let gbpHistory = [];
 
       if (historyData && historyData.length > 0) {
-        // If history is persistent, we show the last 7 days.
-        // Since we store 4 points per day, 7 days is 28 data points!
-        const trendHistory = historyData.slice(-28);
+        // If history is persistent, we show the last 30 days.
+        // Since we store 4 points per day, 30 days is 120 data points!
+        const trendHistory = historyData.slice(-120);
         usdHistory = trendHistory.map(h => ({ date: formatTimestamp(h.timestamp), sell: h.usd.sell }));
         gbpHistory = trendHistory.map(h => ({ date: formatTimestamp(h.timestamp), sell: h.gbp.sell }));
-      } else if (apiData.history_7d) {
-        usdHistory = apiData.history_7d.USD.map(h => ({ date: h.date, sell: h.sell }));
-        gbpHistory = apiData.history_7d.GBP.map(h => ({ date: h.date, sell: h.sell }));
+      } else if (apiData.history_30d) {
+        usdHistory = apiData.history_30d.USD.map(h => ({ date: h.date, sell: h.sell }));
+        gbpHistory = apiData.history_30d.GBP.map(h => ({ date: h.date, sell: h.sell }));
       }
 
       if (usdHistory.length === 0) return;

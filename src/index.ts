@@ -207,9 +207,9 @@ function isHistoryRecordTime(): boolean {
 }
 
 function compileFallbackHistory(latestData: any): any[] {
-  if (!latestData || !latestData.history_7d) return [];
-  const usdHistory = latestData.history_7d.USD || [];
-  const gbpHistory = latestData.history_7d.GBP || [];
+  if (!latestData || !latestData.history_30d) return [];
+  const usdHistory = latestData.history_30d.USD || [];
+  const gbpHistory = latestData.history_30d.GBP || [];
   
   return usdHistory.map((entry: any, index: number) => {
     const gbpEntry = gbpHistory[index] || {};
@@ -223,14 +223,25 @@ function compileFallbackHistory(latestData: any): any[] {
 }
 
 async function fetchFreshRates(env: any): Promise<any> {
-  const [archiveResult, alanchandResult, navasanResult, bitpinResult, wallexResult] = 
-    await Promise.allSettled([
-      fetchArchiveRates(),
-      fetchAlanchandRates(),
-      fetchNavasanRates(env.NAVASAN_API_KEY),
-      fetchBitpinUsdt(),
-      fetchWallexUsdt(),
-    ]);
+  const [
+    archiveResult, 
+    alanchandResult, 
+    navasanResult, 
+    bitpinResult, 
+    wallexResult,
+    bonbastCheck,
+    bonbastMirrorCheck,
+    nobitexCheck
+  ] = await Promise.allSettled([
+    fetchArchiveRates(),
+    fetchAlanchandRates(),
+    fetchNavasanRates(env.NAVASAN_API_KEY),
+    fetchBitpinUsdt(),
+    fetchWallexUsdt(),
+    fetchWithTimeout("https://www.bonbast.com", { headers: { "User-Agent": "Mozilla/5.0" } }, 4000),
+    fetchWithTimeout("https://www.bon-bast.com", { headers: { "User-Agent": "Mozilla/5.0" } }, 4000),
+    fetchWithTimeout("https://api.nobitex.ir/v2/orderbook/USDTIRT", { headers: { "User-Agent": "Mozilla/5.0" } }, 4000)
+  ]);
 
   // Extract individual sources
   let bonbastUSD = null;
@@ -325,13 +336,13 @@ async function fetchFreshRates(env: any): Promise<any> {
   if (archiveResult.status === "fulfilled" && archiveResult.value) {
     const archiveData = archiveResult.value;
     const dates = Object.keys(archiveData).sort();
-    const last7Dates = dates.slice(-7);
-    historyUSD = last7Dates.map(d => ({
+    const last30Dates = dates.slice(-30);
+    historyUSD = last30Dates.map(d => ({
       date: d,
       sell: archiveData[d].usd?.sell || finalUsdSell,
       buy: archiveData[d].usd?.buy || finalUsdBuy,
     }));
-    historyGBP = last7Dates.map(d => ({
+    historyGBP = last30Dates.map(d => ({
       date: d,
       sell: archiveData[d].gbp?.sell || finalGbpSell,
       buy: archiveData[d].gbp?.buy || finalGbpBuy,
@@ -390,10 +401,19 @@ async function fetchFreshRates(env: any): Promise<any> {
         free_market: parseFloat((1 / (finalUsdtSell * 10)).toFixed(12)),
       },
     },
-    history_7d: {
+    history_30d: {
       USD: historyUSD,
       GBP: historyGBP,
     },
+    connections: {
+      "Bonbast": archiveResult.status === "fulfilled" || (bonbastCheck.status === "fulfilled" && bonbastCheck.value.status === 200),
+      "Bon-bast": bonbastMirrorCheck.status === "fulfilled" && bonbastMirrorCheck.value.status === 200,
+      "Alanchand": alanchandResult.status === "fulfilled",
+      "Navasan": navasanResult.status === "fulfilled",
+      "Bitpin": bitpinResult.status === "fulfilled",
+      "Wallex": wallexResult.status === "fulfilled",
+      "Nobitex": nobitexCheck.status === "fulfilled" && nobitexCheck.value.status === 200
+    }
   };
 }
 

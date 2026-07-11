@@ -394,6 +394,8 @@ export const dashboardHtml = `<!DOCTYPE html>
       fill: var(--text-secondary);
       font-size: 10px;
       font-family: var(--font-en);
+      direction: ltr;
+      unicode-bidi: isolate;
     }
 
     .chart-tooltip {
@@ -731,7 +733,7 @@ export const dashboardHtml = `<!DOCTYPE html>
 
       setInterval(async () => {
         try {
-          const ratesRes = await fetch('/api/rates');
+          const ratesRes = await fetch('/api/rates', { cache: 'no-store' });
           if (ratesRes.ok) {
             apiData = await ratesRes.json();
             renderRatesTable();
@@ -918,6 +920,7 @@ export const dashboardHtml = `<!DOCTYPE html>
       const width = 500;
       const height = 180;
       const padding = 35;
+      const leftPadding = 60;
 
       const prices = dataPoints.map(d => d.sell);
       const minPrice = Math.min(...prices) * 0.998;
@@ -927,7 +930,7 @@ export const dashboardHtml = `<!DOCTYPE html>
       const numPoints = dataPoints.length;
       
       const coords = dataPoints.map((dp, i) => {
-        const x = padding + (i / (numPoints - 1)) * (width - 2 * padding);
+        const x = leftPadding + (i / (numPoints - 1)) * (width - leftPadding - padding);
         const y = height - padding - ((dp.sell - minPrice) / (priceRange || 1)) * (height - 2 * padding);
         return { x, y, dp };
       });
@@ -946,8 +949,8 @@ export const dashboardHtml = `<!DOCTYPE html>
       for (let i = 0; i <= 3; i++) {
         const val = minPrice + (i / 3) * priceRange;
         const y = height - padding - (i / 3) * (height - 2 * padding);
-        gridLines += \`<line x1="\${padding}" y1="\${y}" x2="\${width - padding}" y2="\${y}" class="chart-grid-line" />\`;
-        gridLines += \`<text x="\${padding - 5}" y="\${y + 4}" class="chart-axis-text" text-anchor="end">\${Math.round(val).toLocaleString()}</text>\`;
+        gridLines += \`<line x1="\${leftPadding}" y1="\${y}" x2="\${width - padding}" y2="\${y}" class="chart-grid-line" />\`;
+        gridLines += \`<text x="\${leftPadding - 8}" y="\${y + 4}" class="chart-axis-text" text-anchor="end">\${Math.round(val).toLocaleString('en-US')}</text>\`;
       }
 
       let xAxisLabels = '';
@@ -997,8 +1000,8 @@ export const dashboardHtml = `<!DOCTYPE html>
       const y = e.clientY - containerRect.top;
 
       tooltip.innerHTML = \`<strong>\${date}</strong><br/>\${formatNumber(price)} \${dictionary[currentLang].toman}\`;
-      tooltip.style.left = \`\dots\${x + 10}px\`;
-      tooltip.style.top = \`\dots\${y - 45}px\`;
+      tooltip.style.left = \`\${x + 10}px\`;
+      tooltip.style.top = \`\${y - 45}px\`;
       tooltip.style.opacity = 1;
     }
 

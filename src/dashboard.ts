@@ -837,7 +837,7 @@ export const dashboardHtml = `<!DOCTYPE html>
     function renderUsdtSources() {
       const list = document.getElementById('usdt-sources-list');
       list.innerHTML = '';
-      const sources = apiData.rates.USDT.sources;
+      const sources = apiData.rates.USDT.sources || {};
       
       for (const [name, info] of Object.entries(sources)) {
         const item = document.createElement('div');

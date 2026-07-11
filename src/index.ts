@@ -359,6 +359,9 @@ async function fetchFreshRates(env: any): Promise<any> {
         buy: finalUsdtBuy,
         sell: finalUsdtSell,
         unit: "Toman",
+        sources: {
+          [usdtSource]: { price: finalUsdtSell, unit: "Toman" }
+        }
       },
     },
     conversions: {

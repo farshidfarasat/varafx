@@ -803,33 +803,33 @@ export const dashboardHtml = `<!DOCTYPE html>
 
       rows.forEach(r => {
         const tr = document.createElement('tr');
-        const buyVal = r.buy ? `${formatNumber(r.buy)} ${r.unit}` : '-';
-        const buySub = r.buy ? `${formatNumber(r.buy * 10)} ${t.rial}` : '';
-        const sellVal = `${formatNumber(r.sell)} ${r.unit}`;
-        const sellSub = `${formatNumber(r.sell * 10)} ${t.rial}`;
+        const buyVal = r.buy ? formatNumber(r.buy) + ' ' + r.unit : '-';
+        const buySub = r.buy ? formatNumber(r.buy * 10) + ' ' + t.rial : '';
+        const sellVal = formatNumber(r.sell) + ' ' + r.unit;
+        const sellSub = formatNumber(r.sell * 10) + ' ' + t.rial;
 
-        tr.innerHTML = `
-          <td>
-            <div class="currency-cell">
-              <span class="flag-icon">${r.flag}</span>
-              <span>${r.name}</span>
-            </div>
-          </td>
-          <td>
-            <span class="badge ${r.isOfficial ? 'badge-official' : 'badge-market'}">${r.type}</span>
-          </td>
-          <td>
-            <div class="price-val">${r.buy ? formatNumber(r.buy) + ' ' + r.unit : '-'}</div>
-            <div class="price-sub">${buySub}</div>
-          </td>
-          <td>
-            <div class="price-val">${sellVal}</div>
-            <div class="price-sub">${sellSub}</div>
-          </td>
-          <td style="color: var(--text-secondary); font-size: 0.875rem;">
-            ${r.src}
-          </td>
-        `;
+        tr.innerHTML = 
+          '<td>' +
+            '<div class="currency-cell">' +
+              '<span class="flag-icon">' + r.flag + '</span>' +
+              '<span>' + r.name + '</span>' +
+            '</div>' +
+          '</td>' +
+          '<td>' +
+            '<span class="badge ' + (r.isOfficial ? 'badge-official' : 'badge-market') + '">' + r.type + '</span>' +
+          '</td>' +
+          '<td>' +
+            '<div class="price-val">' + (r.buy ? formatNumber(r.buy) + ' ' + r.unit : '-') + '</div>' +
+            '<div class="price-sub">' + buySub + '</div>' +
+          '</td>' +
+          '<td>' +
+            '<div class="price-val">' + sellVal + '</div>' +
+            '<div class="price-sub">' + sellSub + '</div>' +
+          '</td>' +
+          '<td style="color: var(--text-secondary); font-size: 0.875rem;">' +
+            r.src +
+          '</td>';
+
         tbody.appendChild(tr);
       });
     }

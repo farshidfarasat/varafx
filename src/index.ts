@@ -127,7 +127,14 @@ async function getCachedRates(env: any): Promise<any> {
   if (env.KV) {
     const cachedStr = await env.KV.get("rates_latest");
     if (cachedStr) {
-      return JSON.parse(cachedStr);
+      try {
+        const cached = JSON.parse(cachedStr);
+        if (cached.timestamp && (Date.now() - new Date(cached.timestamp).getTime()) < CACHE_TTL) {
+          return cached;
+        }
+      } catch (e) {
+        // Ignore parsing error and fetch fresh
+      }
     }
   }
 
@@ -300,14 +307,16 @@ async function fetchFreshRates(env: any): Promise<any> {
   let finalUsdtSell = finalUsdSell;
   let usdtSource = "Fallback";
 
-  if (wallexResult.status === "fulfilled" && wallexResult.value) {
-    finalUsdtBuy = wallexResult.value.bid;
-    finalUsdtSell = wallexResult.value.ask;
-    usdtSource = "Wallex";
-  } else if (bitpinResult.status === "fulfilled" && bitpinResult.value) {
+  if (bitpinResult.status === "fulfilled" && bitpinResult.value) {
     finalUsdtBuy = bitpinResult.value;
     finalUsdtSell = bitpinResult.value;
     usdtSource = "Bitpin";
+  } else if (wallexResult.status === "fulfilled" && wallexResult.value) {
+    finalUsdtBuy = wallexResult.value.bid;
+    finalUsdtSell = wallexResult.value.ask;
+    usdtSource = "Wallex";
+  } else {
+    console.error("USDT fetch failed from both Bitpin and Wallex");
   }
 
   // Compile daily trends arrays for charts (used as fallback)
@@ -372,10 +381,10 @@ async function fetchFreshRates(env: any): Promise<any> {
         free_market: parseFloat((1 / (finalGbpSell * 10)).toFixed(12)),
       },
       USDT_TO_IRR: {
-        free_market: usdtSell * 10,
+        free_market: finalUsdtSell * 10,
       },
       IRR_TO_USDT: {
-        free_market: parseFloat((1 / (usdtSell * 10)).toFixed(12)),
+        free_market: parseFloat((1 / (finalUsdtSell * 10)).toFixed(12)),
       },
     },
     history_7d: {

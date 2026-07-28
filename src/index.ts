@@ -857,5 +857,5 @@ function extractPriceFromGoogleData(data: any): number {
 }
 
 function roundFx(value: number): number {
-  return parseFloat(value.toFixed(4));
+  return parseFloat(value.toFixed(6));
 }

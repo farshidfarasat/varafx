@@ -10,9 +10,16 @@ interface CacheStore {
   timestamp: number;
 }
 
+interface GoogleFxRate {
+  pair: string;
+  rate: number;
+}
+
 let inMemoryCache: CacheStore | null = null;
+let inMemoryGoogleFxCache: CacheStore | null = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
 const KV_READ_TTL = 35 * 60 * 1000; // 35 minutes in milliseconds
+const GOOGLE_FX_CACHE_TTL = 15 * 60 * 1000; // 15 minutes for global FX rates
 
 export default {
   async fetch(request: Request, env: Env, _ctx: any): Promise<Response> {
@@ -236,7 +243,8 @@ async function fetchFreshRates(env: Env): Promise<any> {
     bitpinResult, 
     wallexResult,
     bonbastLiveResult,
-    nobitexCheck
+    nobitexCheck,
+    googleFxResult
   ] = await Promise.allSettled([
     fetchArchiveRates(),
     fetchAlanchandRates(),
@@ -244,7 +252,8 @@ async function fetchFreshRates(env: Env): Promise<any> {
     fetchBitpinUsdt(),
     fetchWallexUsdt(),
     fetchBonbastLive(),
-    fetchWithTimeout("https://api.nobitex.ir/v2/orderbook/USDTIRT", { headers: { "User-Agent": "Mozilla/5.0" } }, 4000)
+    fetchWithTimeout("https://api.nobitex.ir/v2/orderbook/USDTIRT", { headers: { "User-Agent": "Mozilla/5.0" } }, 4000),
+    getCachedGoogleFxRates(env)
   ]);
 
   // Extract individual sources
@@ -357,6 +366,14 @@ async function fetchFreshRates(env: Env): Promise<any> {
     console.error("USDT fetch failed from both Bitpin and Wallex");
   }
 
+  // 4. Extract Google Finance global FX rates
+  let globalForex: Record<string, number> | null = null;
+  if (googleFxResult.status === "fulfilled" && googleFxResult.value) {
+    globalForex = googleFxResult.value;
+  } else {
+    console.error("Google FX fetch failed:", googleFxResult.status === "rejected" ? googleFxResult.reason : "Unknown error");
+  }
+
   // Compile daily trends arrays for charts (used as fallback)
   let historyUSD: any[] = [];
   let historyGBP: any[] = [];
@@ -458,7 +475,8 @@ async function fetchFreshRates(env: Env): Promise<any> {
       "Bitpin": bitpinResult.status === "fulfilled",
       "Wallex": wallexResult.status === "fulfilled",
       "Nobitex": nobitexCheck.status === "fulfilled" && nobitexCheck.value.status === 200
-    }
+    },
+    global_forex: globalForex,
   };
 }
 
@@ -668,4 +686,176 @@ async function fetchBonbastLive(): Promise<{ usd: { buy: number; sell: number };
     console.warn(`Primary Bonbast scrape failed: ${error.message}. Retrying on mirror...`);
     return await attempt("www.bon-bast.com");
   }
+}
+
+async function getCachedGoogleFxRates(env: Env): Promise<Record<string, number>> {
+  const now = Date.now();
+  if (inMemoryGoogleFxCache && now - inMemoryGoogleFxCache.timestamp < GOOGLE_FX_CACHE_TTL) {
+    return inMemoryGoogleFxCache.data;
+  }
+
+  if (env.KV) {
+    const cachedStr = await env.KV.get("google_fx_rates");
+    if (cachedStr) {
+      try {
+        const cached = JSON.parse(cachedStr);
+        if (cached.timestamp && (now - new Date(cached.timestamp).getTime()) < GOOGLE_FX_CACHE_TTL) {
+          return cached.rates;
+        }
+      } catch (e) {
+        // Ignore parsing error and fetch fresh
+      }
+    }
+  }
+
+  const rates = await fetchGoogleFinanceRates();
+  if (env.KV) {
+    await env.KV.put("google_fx_rates", JSON.stringify({
+      timestamp: new Date().toISOString(),
+      rates,
+    }));
+  }
+  inMemoryGoogleFxCache = {
+    data: rates,
+    timestamp: now,
+  };
+  return rates;
+}
+
+async function fetchGoogleFinanceRates(): Promise<Record<string, number>> {
+  const basePairs = [
+    { from: "EUR", to: "USD" },
+    { from: "GBP", to: "USD" },
+    { from: "EUR", to: "GBP" },
+  ];
+
+  const results = await Promise.allSettled(
+    basePairs.map(pair => fetchGoogleFinanceRate(pair.from, pair.to))
+  );
+
+  const rates: Record<string, number> = {};
+
+  const eurUsd = results[0].status === "fulfilled" ? results[0].value.rate : 0;
+  const gbpUsd = results[1].status === "fulfilled" ? results[1].value.rate : 0;
+  const eurGbp = results[2].status === "fulfilled" ? results[2].value.rate : 0;
+
+  if (eurUsd > 0) {
+    rates["EUR/USD"] = roundFx(eurUsd);
+    rates["USD/EUR"] = roundFx(1 / eurUsd);
+  }
+  if (gbpUsd > 0) {
+    rates["GBP/USD"] = roundFx(gbpUsd);
+    rates["USD/GBP"] = roundFx(1 / gbpUsd);
+  }
+  if (eurGbp > 0) {
+    rates["EUR/GBP"] = roundFx(eurGbp);
+    rates["GBP/EUR"] = roundFx(1 / eurGbp);
+  }
+
+  // Log failures
+  results.forEach((r, i) => {
+    if (r.status === "rejected") {
+      console.error(`Google Finance ${basePairs[i].from}/${basePairs[i].to} failed:`, r.reason);
+    }
+  });
+
+  return rates;
+}
+
+async function fetchGoogleFinanceRate(from: string, to: string): Promise<GoogleFxRate> {
+  const url = `https://www.google.com/finance/quote/${from}-${to}`;
+  const response = await fetchWithTimeout(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "Cookie": "CONSENT=YES+cb",
+    },
+  }, 8000);
+
+  if (!response.ok) {
+    throw new Error(`Google Finance ${from}-${to} HTTP ${response.status}`);
+  }
+
+  const html = await response.text();
+
+  // Pattern 1: data-last-price attribute
+  let match = html.match(/data-last-price="([^"]+)"/);
+  if (match) {
+    return { pair: `${from}/${to}`, rate: parseFloat(match[1]) };
+  }
+
+  // Pattern 2: YMlKec fxKbKc class (main price display)
+  match = html.match(/class="YMlKec fxKbKc"[^>]*>([\d.,]+)</);
+  if (match) {
+    return { pair: `${from}/${to}`, rate: parseFloat(match[1].replace(/,/g, "")) };
+  }
+
+  // Pattern 3: PZPZlf class price element
+  match = html.match(/data-last-price="([^"]*)"|class="[^"]*kf1m0[^"]*"[^>]*>([\d.,]+)</);
+  if (match) {
+    const val = match[1] || match[2];
+    if (val) return { pair: `${from}/${to}`, rate: parseFloat(val.replace(/,/g, "")) };
+  }
+
+  // Pattern 4: Look for embedded JSON data (AF_initDataCallback)
+  const jsonMatch = html.match(/AF_initDataCallback\(\{key:\s*'ds:5'[\s\S]*?data:(\[[\s\S]*?\])\s*\}\);/);
+  if (jsonMatch) {
+    try {
+      const data = JSON.parse(jsonMatch[1]);
+      // Navigate to find the price (structure varies)
+      const price = extractPriceFromGoogleData(data);
+      if (price > 0) return { pair: `${from}/${to}`, rate: price };
+    } catch (e) {
+      // Fall through to next pattern
+    }
+  }
+
+  // Pattern 5: Title tag often contains the rate
+  const titleMatch = html.match(/<title>([\d.,]+)\s/);
+  if (titleMatch) {
+    const val = parseFloat(titleMatch[1].replace(/,/g, ""));
+    if (!isNaN(val) && val > 0) {
+      return { pair: `${from}/${to}`, rate: val };
+    }
+  }
+
+  throw new Error(`Could not parse rate for ${from}/${to}`);
+}
+
+function extractPriceFromGoogleData(data: any): number {
+  try {
+    // Try common paths in Google's data structure
+    let node = data;
+    // Navigate into nested arrays
+    while (Array.isArray(node) && node.length > 0) {
+      node = node[0];
+    }
+    if (Array.isArray(node) && node.length > 1) {
+      // Price is often the first numeric value in a sub-array
+      for (const item of node) {
+        if (Array.isArray(item)) {
+          for (const sub of item) {
+            if (typeof sub === "number" && sub > 0 && sub < 1000) {
+              return sub;
+            }
+            if (Array.isArray(sub)) {
+              for (const s of sub) {
+                if (typeof s === "number" && s > 0 && s < 1000) {
+                  return s;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore
+  }
+  return 0;
+}
+
+function roundFx(value: number): number {
+  return parseFloat(value.toFixed(4));
 }

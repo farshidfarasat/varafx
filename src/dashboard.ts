@@ -579,6 +579,27 @@ export const dashboardHtml = `<!DOCTYPE html>
     </div>
 
     <!-- Charts Section -->
+    <div class="forex-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2.5rem;">
+      <div class="glass-card">
+        <div class="card-title" id="title-forex">Global Forex Cross Rates</div>
+        <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 1rem;" id="forex-source">Powered by Google Finance</p>
+        <div style="overflow-x: auto;">
+          <table class="rates-table" style="font-size: 0.9rem;">
+            <tbody id="forex-tbody">
+              <!-- Forex rates populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="glass-card" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 0.5rem;">
+        <div style="font-size: 2.5rem; color: var(--accent);">💱</div>
+        <div style="font-weight: 600; font-size: 1.1rem;" id="forex-pair-highlight">EUR/USD</div>
+        <div style="font-size: 2rem; font-weight: 700; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;" id="forex-rate-highlight">--</div>
+        <div style="color: var(--text-secondary); font-size: 0.8rem;" id="forex-pairs-count">6 currency pairs tracked</div>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
     <div class="charts-grid">
       <div class="glass-card">
         <div class="card-title" id="title-usd-chart">USD Free Market Trend (30 Days)</div>
@@ -637,7 +658,11 @@ export const dashboardHtml = `<!DOCTYPE html>
         toman: "Toman",
         rial: "Rial",
         lastUpdated: "Last Aggregated: ",
-        errorLoading: "Failed to load exchange rates. Please refresh."
+        errorLoading: "Failed to load exchange rates. Please refresh.",
+        titleForex: "Global Forex Cross Rates",
+        forexSource: "Powered by Google Finance",
+        forexPairsCount: "6 currency pairs tracked",
+        forexUnavailable: "FX data unavailable"
       },
       fa: {
         loading: "در حال دریافت قیمت‌های لحظه‌ای بازار...",
@@ -663,7 +688,11 @@ export const dashboardHtml = `<!DOCTYPE html>
         toman: "تومان",
         rial: "ریال",
         lastUpdated: "آخرین بروزرسانی: ",
-        errorLoading: "خطا در بارگذاری اطلاعات. لطفا صفحه را مجدداً بارگذاری کنید."
+        errorLoading: "خطا در بارگذاری اطلاعات. لطفا صفحه را مجدداً بارگذاری کنید.",
+        titleForex: "نرخ‌های متقاطع جهانی فارکس",
+        forexSource: "دریافت از Google Finance",
+        forexPairsCount: "۶ جفت ارز تحت پوشش",
+        forexUnavailable: "اطلاعات فارکس در دسترس نیست"
       }
     };
 
@@ -692,12 +721,15 @@ export const dashboardHtml = `<!DOCTYPE html>
       document.getElementById('title-api-docs').innerText = t.titleApiDocs;
       document.getElementById('api-docs-desc').innerText = t.apiDocsDesc;
       document.getElementById('copy-btn').innerText = t.copyBtn;
+      document.getElementById('title-forex').innerText = t.titleForex;
+      document.getElementById('forex-source').innerText = t.forexSource;
 
 
       if (apiData) {
         renderRatesTable();
         renderConnections();
         renderCharts();
+        renderForexRates();
         updateLastUpdated();
       }
     }
@@ -723,6 +755,7 @@ export const dashboardHtml = `<!DOCTYPE html>
         renderRatesTable();
         renderConnections();
         renderCharts();
+        renderForexRates();
         updateLastUpdated();
         
         document.getElementById('loading').classList.add('hidden');
@@ -738,6 +771,7 @@ export const dashboardHtml = `<!DOCTYPE html>
             apiData = await ratesRes.json();
             renderRatesTable();
             renderConnections();
+            renderForexRates();
             updateLastUpdated();
           }
         } catch (err) {
@@ -874,6 +908,52 @@ export const dashboardHtml = `<!DOCTYPE html>
         item.appendChild(statusBadge);
         list.appendChild(item);
       });
+    }
+
+    function renderForexRates() {
+      const tbody = document.getElementById('forex-tbody');
+      const highlight = document.getElementById('forex-rate-highlight');
+      const pairHighlight = document.getElementById('forex-pair-highlight');
+      const pairsCount = document.getElementById('forex-pairs-count');
+      const t = dictionary[currentLang];
+
+      if (!apiData || !apiData.global_forex || Object.keys(apiData.global_forex).length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">' + t.forexUnavailable + '</td></tr>';
+        highlight.innerText = '--';
+        return;
+      }
+
+      const forex = apiData.global_forex;
+      const displayPairs = ['EUR/USD', 'GBP/USD', 'EUR/GBP', 'USD/EUR', 'USD/GBP', 'GBP/EUR'];
+      const flags = { 'EUR/USD': '🇪🇺', 'GBP/USD': '🇬🇧', 'EUR/GBP': '🇪🇺', 'USD/EUR': '🇺🇸', 'USD/GBP': '🇺🇸', 'GBP/EUR': '🇬🇧' };
+
+      tbody.innerHTML = '';
+      displayPairs.forEach(pair => {
+        const rate = forex[pair];
+        if (rate === undefined) return;
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td style="padding: 0.6rem 1rem;">' +
+            '<div class="currency-cell">' +
+              '<span class="flag-icon">' + (flags[pair] || '') + '</span>' +
+              '<span style="font-weight: 600;">' + pair + '</span>' +
+            '</div>' +
+          '</td>' +
+          '<td style="padding: 0.6rem 1rem; text-align: right;">' +
+            '<span class="price-val" style="font-size: 1.05rem;">' + rate.toFixed(4) + '</span>' +
+          '</td>';
+        tbody.appendChild(tr);
+      });
+
+      if (forex['EUR/USD']) {
+        pairHighlight.innerText = 'EUR/USD';
+        highlight.innerText = forex['EUR/USD'].toFixed(4);
+      } else if (forex['GBP/USD']) {
+        pairHighlight.innerText = 'GBP/USD';
+        highlight.innerText = forex['GBP/USD'].toFixed(4);
+      }
+
+      pairsCount.innerText = Object.keys(forex).length + ' ' + t.forexPairsCount.replace(/^\d+/, '');
     }
 
     function renderCharts() {

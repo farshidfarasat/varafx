@@ -115,6 +115,40 @@ export default {
       }
     }
 
+    // Route: GET /api/forex-history
+    if (url.pathname === "/api/forex-history") {
+      try {
+        let history: any[] = [];
+        if (env.KV) {
+          const historyStr = await env.KV.get("forex_history");
+          if (historyStr) {
+            history = JSON.parse(historyStr);
+          }
+        }
+        return new Response(JSON.stringify(history), {
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "public, max-age=3600",
+          },
+        });
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({
+            status: "error",
+            message: err.message || "Failed to fetch forex history",
+          }),
+          {
+            status: 500,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+            },
+          }
+        );
+      }
+    }
+
     // Default: 404
     return new Response(
       JSON.stringify({
@@ -199,6 +233,31 @@ async function handleScheduled(env: Env): Promise<void> {
 
       await env.KV.put("rates_history", JSON.stringify(history));
       console.log("Historical entry recorded in KV!");
+    }
+
+    // Record daily Google FX history (once per UTC day)
+    if (env.KV && ratesData.global_forex && Object.keys(ratesData.global_forex).length > 0) {
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const forexHistoryStr = await env.KV.get("forex_history");
+      let forexHistory: any[] = [];
+      if (forexHistoryStr) {
+        forexHistory = JSON.parse(forexHistoryStr);
+      }
+
+      const alreadyRecorded = forexHistory.length > 0 && forexHistory[forexHistory.length - 1].date === today;
+      if (!alreadyRecorded) {
+        forexHistory.push({
+          date: today,
+          timestamp: new Date().toISOString(),
+          rates: ratesData.global_forex,
+        });
+
+        // Keep only the last 60 days (2 months)
+        forexHistory = forexHistory.slice(-60);
+
+        await env.KV.put("forex_history", JSON.stringify(forexHistory));
+        console.log("Google FX daily snapshot recorded in KV!");
+      }
     }
   } catch (err: any) {
     console.error("Error in scheduled task:", err.message);

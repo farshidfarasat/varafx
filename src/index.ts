@@ -474,7 +474,8 @@ async function fetchFreshRates(env: Env): Promise<any> {
       "Navasan": navasanResult.status === "fulfilled",
       "Bitpin": bitpinResult.status === "fulfilled",
       "Wallex": wallexResult.status === "fulfilled",
-      "Nobitex": nobitexCheck.status === "fulfilled" && nobitexCheck.value.status === 200
+      "Nobitex": nobitexCheck.status === "fulfilled" && nobitexCheck.value.status === 200,
+      "Google Finance": globalForex !== null && Object.keys(globalForex).length > 0
     },
     global_forex: globalForex,
   };
@@ -759,7 +760,52 @@ async function fetchGoogleFinanceRates(): Promise<Record<string, number>> {
     }
   });
 
+  // Fallback to public FX API if any base pair is missing
+  if (!rates["EUR/USD"] || !rates["GBP/USD"] || !rates["EUR/GBP"]) {
+    console.warn("Google Finance rates incomplete, falling back to public FX API");
+    const fallbackRates = await fetchFallbackFxRates();
+    for (const [pair, rate] of Object.entries(fallbackRates)) {
+      if (!rates[pair]) {
+        rates[pair] = rate;
+      }
+    }
+  }
+
   return rates;
+}
+
+async function fetchFallbackFxRates(): Promise<Record<string, number>> {
+  try {
+    const response = await fetchWithTimeout("https://open.er-api.com/v6/latest/USD", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) VaraFX/1.0.0",
+      },
+    }, 6000);
+
+    if (!response.ok) throw new Error(`Fallback API HTTP ${response.status}`);
+
+    const data: any = await response.json();
+    if (!data || !data.rates) throw new Error("Fallback API returned invalid data");
+
+    const { EUR, GBP } = data.rates;
+    if (!EUR || !GBP) throw new Error("Fallback API missing EUR or GBP rates");
+
+    const eurUsd = 1 / EUR;  // USD base: 1 USD = X EUR, so EUR/USD = 1/X
+    const gbpUsd = 1 / GBP;  // USD base: 1 USD = X GBP, so GBP/USD = 1/X
+    const eurGbp = EUR / GBP;
+
+    return {
+      "EUR/USD": roundFx(eurUsd),
+      "USD/EUR": roundFx(1 / eurUsd),
+      "GBP/USD": roundFx(gbpUsd),
+      "USD/GBP": roundFx(1 / gbpUsd),
+      "EUR/GBP": roundFx(eurGbp),
+      "GBP/EUR": roundFx(1 / eurGbp),
+    };
+  } catch (err: any) {
+    console.error("Fallback FX API failed:", err.message);
+    return {};
+  }
 }
 
 async function fetchGoogleFinanceRate(from: string, to: string): Promise<GoogleFxRate> {
@@ -769,7 +815,10 @@ async function fetchGoogleFinanceRate(from: string, to: string): Promise<GoogleF
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       "Accept-Language": "en-US,en;q=0.9",
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-      "Cookie": "CONSENT=YES+cb",
+      "sec-ch-ua": "\"Not/A)Brand\";v=\"99\", \"Google Chrome\";v=\"120\", \"Chromium\";v=\"120\"",
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": "\"Windows\"",
+      "Cookie": "CONSENT=YES+cb; SOCS=CAESEwgDEgk0ODE3Nzk3MjcaAmVuIAEaBgiAqafJBg",
     },
   }, 8000);
 

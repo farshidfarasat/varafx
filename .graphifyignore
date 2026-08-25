@@ -1,0 +1,13 @@
+﻿node_modules/
+.wrangler/
+.browser-*/
+.chrome-*/
+.playwright-*/
+.browser-xero-profile/
+.chrome-cdp-profile/
+dist/
+coverage/
+graphify-out/
+.venv/
+venv/
+*.pma

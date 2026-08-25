@@ -12,3 +12,14 @@ Referencing `@AGENTS.md` in a prompt is an execution order. The agent MUST run t
 3. **Verification**: Run `npm test` or typecheck (`npx tsc --noEmit`). Fix errors automatically until green.
 4. **Sync & Push**: `git add .`, commit with `feat: add Google FX rates for EUR/USD, GBP/USD, EUR/GBP and reverses`, and `git push origin main`.
 5. **Summary**: Provide a final summary of changes, commit SHA, and test results.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues via `gh` (this repo's origin). See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context layout. See `docs/agents/domain.md`. Skills proceed silently if `CONTEXT.md` / ADRs are absent.
+

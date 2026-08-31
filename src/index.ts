@@ -1,8 +1,11 @@
 import { dashboardHtml } from "./dashboard";
+import { classifyRateQuality, type RateQuality } from "./rate-quality";
+import { forexHistoryKey, ratesHistoryKey } from "./history-keys";
 
 interface Env {
   KV?: KVNamespace;
   NAVASAN_API_KEY?: string;
+  AUTONOMY_KILL_SWITCH?: string;
 }
 
 interface CacheStore {
@@ -13,6 +16,12 @@ interface CacheStore {
 interface GoogleFxRate {
   pair: string;
   rate: number;
+}
+
+interface GoogleFxCacheData {
+  rates: Record<string, number>;
+  source: string;
+  observed_at: string;
 }
 
 let inMemoryCache: CacheStore | null = null;
@@ -79,10 +88,7 @@ export default {
       try {
         let history: any[] = [];
         if (env.KV) {
-          const historyStr = await env.KV.get("rates_history");
-          if (historyStr) {
-            history = JSON.parse(historyStr);
-          }
+          history = await readKeyedHistory(env.KV, "rates_history:", "rates_history");
         }
 
         // Fallback to daily archive trend if KV history is empty
@@ -120,10 +126,7 @@ export default {
       try {
         let history: any[] = [];
         if (env.KV) {
-          const historyStr = await env.KV.get("forex_history");
-          if (historyStr) {
-            history = JSON.parse(historyStr);
-          }
+          history = await readKeyedHistory(env.KV, "forex_history:", "forex_history");
         }
         return new Response(JSON.stringify(history), {
           headers: {
@@ -202,6 +205,10 @@ async function getCachedRates(env: Env): Promise<any> {
 }
 
 async function handleScheduled(env: Env): Promise<void> {
+  if (env.AUTONOMY_KILL_SWITCH?.toLowerCase() === "true") {
+    console.warn("Autonomous scheduled work halted by AUTONOMY_KILL_SWITCH");
+    return;
+  }
   console.log("Scheduled cron running...");
   try {
     const ratesData = await fetchFreshRates(env);
@@ -213,51 +220,29 @@ async function handleScheduled(env: Env): Promise<void> {
 
     // Record historical data points at 10:30, 13:30, 15:30, 17:30 Iran Time
     if (isHistoryRecordTime() && env.KV) {
-      const historyStr = await env.KV.get("rates_history");
-      let history: any[] = [];
-      if (historyStr) {
-        history = JSON.parse(historyStr);
-      }
-
       const historyEntry = {
-        timestamp: new Date().toISOString(),
+        timestamp: ratesData.timestamp,
+        quality: ratesData.quality,
         usd: ratesData.rates.USD,
         gbp: ratesData.rates.GBP,
         usdt: ratesData.rates.USDT,
       };
 
-      history.push(historyEntry);
-
-      // Keep only 12 months of history (4 data points per day * 365 = 1460, let's keep 1500)
-      history = history.slice(-1500);
-
-      await env.KV.put("rates_history", JSON.stringify(history));
+      await env.KV.put(ratesHistoryKey(ratesData.timestamp), JSON.stringify(historyEntry));
       console.log("Historical entry recorded in KV!");
     }
 
     // Record daily Google FX history (once per UTC day)
     if (env.KV && ratesData.global_forex && Object.keys(ratesData.global_forex).length > 0) {
       const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-      const forexHistoryStr = await env.KV.get("forex_history");
-      let forexHistory: any[] = [];
-      if (forexHistoryStr) {
-        forexHistory = JSON.parse(forexHistoryStr);
-      }
-
-      const alreadyRecorded = forexHistory.length > 0 && forexHistory[forexHistory.length - 1].date === today;
-      if (!alreadyRecorded) {
-        forexHistory.push({
-          date: today,
-          timestamp: new Date().toISOString(),
-          rates: ratesData.global_forex,
-        });
-
-        // Keep only the last 60 days (2 months)
-        forexHistory = forexHistory.slice(-60);
-
-        await env.KV.put("forex_history", JSON.stringify(forexHistory));
-        console.log("Google FX daily snapshot recorded in KV!");
-      }
+      await env.KV.put(forexHistoryKey(ratesData.timestamp), JSON.stringify({
+        date: today,
+        timestamp: ratesData.timestamp,
+        source: ratesData.global_forex_source,
+        quality: ratesData.quality_by_rate.global_forex,
+        rates: ratesData.global_forex,
+      }));
+      console.log("Google FX daily snapshot recorded in KV!");
     }
   } catch (err: any) {
     console.error("Error in scheduled task:", err.message);
@@ -276,6 +261,32 @@ function isHistoryRecordTime(): boolean {
   const isTargetMinute = min >= 25 && min <= 35;
   
   return isTargetHour && isTargetMinute;
+}
+
+async function readKeyedHistory(
+  kv: KVNamespace,
+  prefix: string,
+  legacyKey: string,
+): Promise<any[]> {
+  const listed = await kv.list({ prefix, limit: 1000 });
+  const keyed = await Promise.all(
+    listed.keys.map(async ({ name }) => {
+      const value = await kv.get(name, "json");
+      return value && typeof value === "object" ? value : null;
+    }),
+  );
+  const history = keyed.filter((entry): entry is Record<string, unknown> => entry !== null);
+  if (history.length > 0) {
+    const maxEntries = prefix === "forex_history:" ? 60 : 1500;
+    return history
+      .sort((a, b) =>
+        String(a.timestamp ?? a.date).localeCompare(String(b.timestamp ?? b.date)),
+      )
+      .slice(-maxEntries);
+  }
+
+  const legacy = await kv.get(legacyKey, "json");
+  return Array.isArray(legacy) ? legacy : [];
 }
 
 function compileFallbackHistory(latestData: any): any[] {
@@ -427,8 +438,12 @@ async function fetchFreshRates(env: Env): Promise<any> {
 
   // 4. Extract Google Finance global FX rates
   let globalForex: Record<string, number> | null = null;
+  let globalForexSource: string | null = null;
+  let globalForexObservedAt: string | null = null;
   if (googleFxResult.status === "fulfilled" && googleFxResult.value) {
-    globalForex = googleFxResult.value;
+    globalForex = googleFxResult.value.rates;
+    globalForexSource = googleFxResult.value.source;
+    globalForexObservedAt = googleFxResult.value.observed_at;
   } else {
     console.error("Google FX fetch failed:", googleFxResult.status === "rejected" ? googleFxResult.reason : "Unknown error");
   }
@@ -452,12 +467,31 @@ async function fetchFreshRates(env: Env): Promise<any> {
     }));
   }
 
+  const observedAt = new Date().toISOString();
+  const qualityByRate: Record<string, RateQuality> = {
+    USD: classifyRateQuality({ source: usdSource, observed_at: observedAt }, Date.parse(observedAt)),
+    GBP: classifyRateQuality({ source: gbpSource, observed_at: observedAt }, Date.parse(observedAt)),
+    USDT: classifyRateQuality({ source: usdtSource, observed_at: observedAt }, Date.parse(observedAt)),
+    global_forex: classifyRateQuality(
+      { source: globalForexSource, observed_at: globalForexObservedAt },
+      Date.parse(observedAt),
+    ),
+  };
+  const quality = Object.values(qualityByRate).includes("unavailable")
+    ? "unavailable"
+    : Object.values(qualityByRate).includes("degraded")
+      ? "degraded"
+      : "live";
+
   return {
-    status: "success",
-    timestamp: new Date().toISOString(),
+    status: quality === "live" ? "success" : quality,
+    quality,
+    quality_by_rate: qualityByRate,
+    timestamp: observedAt,
     rates: {
       USD: {
         source: usdSource,
+        observed_at: observedAt,
         buy: finalUsdBuy,
         sell: finalUsdSell,
         unit: "Toman",
@@ -473,6 +507,7 @@ async function fetchFreshRates(env: Env): Promise<any> {
       },
       GBP: {
         source: gbpSource,
+        observed_at: observedAt,
         buy: finalGbpBuy,
         sell: finalGbpSell,
         unit: "Toman",
@@ -488,6 +523,7 @@ async function fetchFreshRates(env: Env): Promise<any> {
       },
       USDT: {
         source: usdtSource,
+        observed_at: observedAt,
         buy: finalUsdtBuy,
         sell: finalUsdtSell,
         unit: "Toman",
@@ -537,6 +573,8 @@ async function fetchFreshRates(env: Env): Promise<any> {
       "Google Finance": globalForex !== null && Object.keys(globalForex).length > 0
     },
     global_forex: globalForex,
+    global_forex_source: globalForexSource,
+    global_forex_observed_at: globalForexObservedAt,
   };
 }
 
@@ -748,7 +786,7 @@ async function fetchBonbastLive(): Promise<{ usd: { buy: number; sell: number };
   }
 }
 
-async function getCachedGoogleFxRates(env: Env): Promise<Record<string, number>> {
+async function getCachedGoogleFxRates(env: Env): Promise<GoogleFxCacheData> {
   const now = Date.now();
   if (inMemoryGoogleFxCache && now - inMemoryGoogleFxCache.timestamp < GOOGLE_FX_CACHE_TTL) {
     return inMemoryGoogleFxCache.data;
@@ -760,7 +798,11 @@ async function getCachedGoogleFxRates(env: Env): Promise<Record<string, number>>
       try {
         const cached = JSON.parse(cachedStr);
         if (cached.timestamp && (now - new Date(cached.timestamp).getTime()) < GOOGLE_FX_CACHE_TTL) {
-          return cached.rates;
+          return {
+            rates: cached.rates ?? {},
+            source: cached.source ?? "Google Finance (cached)",
+            observed_at: cached.observed_at ?? cached.timestamp,
+          };
         }
       } catch (e) {
         // Ignore parsing error and fetch fresh
@@ -768,21 +810,30 @@ async function getCachedGoogleFxRates(env: Env): Promise<Record<string, number>>
     }
   }
 
-  const rates = await fetchGoogleFinanceRates();
+  const fetched = await fetchGoogleFinanceRates();
+  const observedAt = new Date().toISOString();
+  const data: GoogleFxCacheData = {
+    rates: fetched.rates,
+    source: fetched.source,
+    observed_at: observedAt,
+  };
   if (env.KV) {
     await env.KV.put("google_fx_rates", JSON.stringify({
-      timestamp: new Date().toISOString(),
-      rates,
+      timestamp: observedAt,
+      ...data,
     }));
   }
   inMemoryGoogleFxCache = {
-    data: rates,
+    data,
     timestamp: now,
   };
-  return rates;
+  return data;
 }
 
-async function fetchGoogleFinanceRates(): Promise<Record<string, number>> {
+async function fetchGoogleFinanceRates(): Promise<{
+  rates: Record<string, number>;
+  source: string;
+}> {
   const basePairs = [
     { from: "EUR", to: "USD" },
     { from: "GBP", to: "USD" },
@@ -819,10 +870,13 @@ async function fetchGoogleFinanceRates(): Promise<Record<string, number>> {
     }
   });
 
+  let source = "Google Finance";
+
   // Fallback to public FX API if any base pair is missing
   if (!rates["EUR/USD"] || !rates["GBP/USD"] || !rates["EUR/GBP"]) {
     console.warn("Google Finance rates incomplete, falling back to public FX API");
     const fallbackRates = await fetchFallbackFxRates();
+    source = "Google Finance + Fallback API";
     for (const [pair, rate] of Object.entries(fallbackRates)) {
       if (!rates[pair]) {
         rates[pair] = rate;
@@ -830,7 +884,7 @@ async function fetchGoogleFinanceRates(): Promise<Record<string, number>> {
     }
   }
 
-  return rates;
+  return { rates, source };
 }
 
 async function fetchFallbackFxRates(): Promise<Record<string, number>> {

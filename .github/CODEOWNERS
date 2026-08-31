@@ -1,0 +1,4 @@
+# Workflow and automation policy changes require owner review.
+/.github/workflows/ @farshidfarasat
+/.github/CODEOWNERS @farshidfarasat
+AGENTS.md @farshidfarasat

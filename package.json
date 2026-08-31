@@ -5,7 +5,9 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
-    "start": "wrangler dev"
+    "start": "wrangler dev",
+    "typecheck": "tsc --noEmit",
+    "test": "npx --yes tsx --test tests/rate-quality.test.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240529.0",

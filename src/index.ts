@@ -1,4 +1,13 @@
 import { dashboardHtml } from "./dashboard";
+import {
+  capForexHistory,
+  capRatesHistory,
+  compileFallbackHistory,
+  isHistoryRecordTime,
+  parsePersianPrice,
+  pickTomanRate,
+  pickUsdtRate,
+} from "./rate-selection";
 
 interface Env {
   KV?: KVNamespace;
@@ -229,7 +238,7 @@ async function handleScheduled(env: Env): Promise<void> {
       history.push(historyEntry);
 
       // Keep only 12 months of history (4 data points per day * 365 = 1460, let's keep 1500)
-      history = history.slice(-1500);
+      history = capRatesHistory(history);
 
       await env.KV.put("rates_history", JSON.stringify(history));
       console.log("Historical entry recorded in KV!");
@@ -253,7 +262,7 @@ async function handleScheduled(env: Env): Promise<void> {
         });
 
         // Keep only the last 60 days (2 months)
-        forexHistory = forexHistory.slice(-60);
+        forexHistory = capForexHistory(forexHistory);
 
         await env.KV.put("forex_history", JSON.stringify(forexHistory));
         console.log("Google FX daily snapshot recorded in KV!");
@@ -262,36 +271,6 @@ async function handleScheduled(env: Env): Promise<void> {
   } catch (err: any) {
     console.error("Error in scheduled task:", err.message);
   }
-}
-
-function isHistoryRecordTime(): boolean {
-  // Iran Standard Time (IRST) is UTC+3:30
-  const iranTime = new Date(Date.now() + 3.5 * 60 * 60 * 1000);
-  const hour = iranTime.getUTCHours();
-  const min = iranTime.getUTCMinutes();
-  
-  // We record at local times: 10:30, 13:30, 15:30, 17:30
-  // Schedulers can skew by a few minutes, we check if minutes fall between 25 and 35
-  const isTargetHour = [10, 13, 15, 17].includes(hour);
-  const isTargetMinute = min >= 25 && min <= 35;
-  
-  return isTargetHour && isTargetMinute;
-}
-
-function compileFallbackHistory(latestData: any): any[] {
-  if (!latestData || !latestData.history_30d) return [];
-  const usdHistory = latestData.history_30d.USD || [];
-  const gbpHistory = latestData.history_30d.GBP || [];
-  
-  return usdHistory.map((entry: any, index: number) => {
-    const gbpEntry = gbpHistory[index] || {};
-    return {
-      timestamp: entry.date,
-      usd: { buy: entry.buy, sell: entry.sell },
-      gbp: { buy: gbpEntry.buy, sell: gbpEntry.sell },
-      usdt: { buy: latestData.rates.USDT.buy, sell: latestData.rates.USDT.sell },
-    };
-  });
 }
 
 async function fetchFreshRates(env: Env): Promise<any> {
@@ -362,68 +341,37 @@ async function fetchFreshRates(env: Env): Promise<any> {
     console.error("Navasan fetch failed:", navasanResult.status === "rejected" ? navasanResult.reason : "Unknown error");
   }
 
-  // 1. Select USD rates: Bonbast (Live) -> AlanChand -> Navasan -> Bonbast (Archive) -> Fallback
-  let finalUsdBuy = 174000;
-  let finalUsdSell = 174500;
-  let usdSource = "Fallback";
+  // 1-2. Select USD and GBP rates. The fallback-chain order and source labels
+  // are invariants — the logic lives in rate-selection.ts and is unit-tested.
+  const usdPick = pickTomanRate(
+    { bonbastMode, bonbastDate, bonbast: bonbastUSD, alanchand: alanchandUSD, navasan: navasanUSD },
+    174000,
+    174500
+  );
+  const gbpPick = pickTomanRate(
+    { bonbastMode, bonbastDate, bonbast: bonbastGBP, alanchand: alanchandGBP, navasan: navasanGBP },
+    231000,
+    232000
+  );
+  const finalUsdBuy = usdPick.buy;
+  const finalUsdSell = usdPick.sell;
+  const usdSource = usdPick.source;
+  const finalGbpBuy = gbpPick.buy;
+  const finalGbpSell = gbpPick.sell;
+  const gbpSource = gbpPick.source;
 
-  if (bonbastMode === "live" && bonbastUSD) {
-    finalUsdBuy = bonbastUSD.buy;
-    finalUsdSell = bonbastUSD.sell;
-    usdSource = "Bonbast (Live)";
-  } else if (alanchandUSD) {
-    finalUsdBuy = alanchandUSD.buy;
-    finalUsdSell = alanchandUSD.sell;
-    usdSource = "AlanChand";
-  } else if (navasanUSD) {
-    finalUsdBuy = navasanUSD.buy;
-    finalUsdSell = navasanUSD.sell;
-    usdSource = "Navasan";
-  } else if (bonbastMode === "archive" && bonbastUSD) {
-    finalUsdBuy = bonbastUSD.buy;
-    finalUsdSell = bonbastUSD.sell;
-    usdSource = bonbastDate ? `Bonbast (Archive ${bonbastDate})` : "Bonbast (Archive)";
-  }
-
-  // 2. Select GBP rates: Bonbast (Live) -> AlanChand -> Navasan -> Bonbast (Archive) -> Fallback
-  let finalGbpBuy = 231000;
-  let finalGbpSell = 232000;
-  let gbpSource = "Fallback";
-
-  if (bonbastMode === "live" && bonbastGBP) {
-    finalGbpBuy = bonbastGBP.buy;
-    finalGbpSell = bonbastGBP.sell;
-    gbpSource = "Bonbast (Live)";
-  } else if (alanchandGBP) {
-    finalGbpBuy = alanchandGBP.buy;
-    finalGbpSell = alanchandGBP.sell;
-    gbpSource = "AlanChand";
-  } else if (navasanGBP) {
-    finalGbpBuy = navasanGBP.buy;
-    finalGbpSell = navasanGBP.sell;
-    gbpSource = "Navasan";
-  } else if (bonbastMode === "archive" && bonbastGBP) {
-    finalGbpBuy = bonbastGBP.buy;
-    finalGbpSell = bonbastGBP.sell;
-    gbpSource = bonbastDate ? `Bonbast (Archive ${bonbastDate})` : "Bonbast (Archive)";
-  }
-
-  // 3. Select USDT rates
-  let finalUsdtBuy = finalUsdBuy;
-  let finalUsdtSell = finalUsdSell;
-  let usdtSource = "Fallback";
-
-  if (bitpinResult.status === "fulfilled" && bitpinResult.value) {
-    finalUsdtBuy = bitpinResult.value.buy;
-    finalUsdtSell = bitpinResult.value.sell;
-    usdtSource = "Bitpin";
-  } else if (wallexResult.status === "fulfilled" && wallexResult.value) {
-    finalUsdtBuy = wallexResult.value.bid;
-    finalUsdtSell = wallexResult.value.ask;
-    usdtSource = "Wallex";
-  } else {
+  // 3. Select USDT rates: Bitpin -> Wallex -> the selected USD values
+  const bitpinQuote =
+    bitpinResult.status === "fulfilled" && bitpinResult.value ? bitpinResult.value : null;
+  const wallexQuote =
+    wallexResult.status === "fulfilled" && wallexResult.value ? wallexResult.value : null;
+  if (!bitpinQuote && !wallexQuote) {
     console.error("USDT fetch failed from both Bitpin and Wallex");
   }
+  const usdtPick = pickUsdtRate(bitpinQuote, wallexQuote, usdPick);
+  const finalUsdtBuy = usdtPick.buy;
+  const finalUsdtSell = usdtPick.sell;
+  const usdtSource = usdtPick.source;
 
   // 4. Extract Google Finance global FX rates
   let globalForex: Record<string, number> | null = null;
@@ -601,15 +549,6 @@ async function fetchAlanchandRates(): Promise<{ usd: { buy: number; sell: number
     usd: parseRow("usd"),
     gbp: parseRow("gbp")
   };
-}
-
-function parsePersianPrice(str: string): number {
-  const persianDigits = [/۰/g, /۱/g, /۲/g, /۳/g, /۴/g, /۵/g, /۶/g, /۷/g, /۸/g, /۹/g];
-  let englishStr = str.replace(/,/g, "").trim();
-  for (let i = 0; i < 10; i++) {
-    englishStr = englishStr.replace(persianDigits[i], i.toString());
-  }
-  return parseInt(englishStr);
 }
 
 async function fetchNavasanRates(apiKey?: string): Promise<{ usd: { buy: number; sell: number }; gbp: { buy: number; sell: number } }> {

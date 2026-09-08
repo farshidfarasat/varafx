@@ -1,0 +1,426 @@
+{
+ "2026-07-09": {
+  "usd_buy": 179650,
+  "usd_sell": 181450,
+  "gbp_buy": 237100,
+  "gbp_sell": 240700,
+  "usdt_buy": 182211,
+  "usdt_sell": 182211
+ },
+ "2026-07-10": {
+  "usd_buy": 179750,
+  "usd_sell": 181550,
+  "gbp_buy": 237500,
+  "gbp_sell": 241100,
+  "usdt_buy": 179937,
+  "usdt_sell": 179937
+ },
+ "2026-07-11": {
+  "usd_buy": 176100,
+  "usd_sell": 176200,
+  "gbp_buy": 235950,
+  "gbp_sell": 236150,
+  "usdt_buy": 177644,
+  "usdt_sell": 177644
+ },
+ "2026-07-12": {
+  "usd_buy": 178400,
+  "usd_sell": 178500,
+  "gbp_buy": 239000,
+  "gbp_sell": 239200,
+  "usdt_buy": 179603,
+  "usdt_sell": 179603
+ },
+ "2026-07-14": {
+  "usd_buy": 183000,
+  "usd_sell": 183100,
+  "gbp_buy": 244850,
+  "gbp_sell": 245050,
+  "usdt_buy": 183900,
+  "usdt_sell": 183900
+ },
+ "2026-07-15": {
+  "usd_buy": 187700,
+  "usd_sell": 187800,
+  "gbp_buy": 251500,
+  "gbp_sell": 251700,
+  "usdt_buy": 188765,
+  "usdt_sell": 188765
+ },
+ "2026-07-16": {
+  "usd_buy": 187600,
+  "usd_sell": 187700,
+  "gbp_buy": 253200,
+  "gbp_sell": 253400,
+  "usdt_buy": 188830,
+  "usdt_sell": 188830
+ },
+ "2026-07-17": {
+  "usd_buy": 190700,
+  "usd_sell": 190800,
+  "gbp_buy": 256200,
+  "gbp_sell": 256400,
+  "usdt_buy": 190700,
+  "usdt_sell": 190800
+ },
+ "2026-07-18": {
+  "usd_buy": 193600,
+  "usd_sell": 193700,
+  "gbp_buy": 260300,
+  "gbp_sell": 260500,
+  "usdt_buy": 193792,
+  "usdt_sell": 193792
+ },
+ "2026-07-19": {
+  "usd_buy": 193400,
+  "usd_sell": 193500,
+  "gbp_buy": 259950,
+  "gbp_sell": 260150,
+  "usdt_buy": 194396,
+  "usdt_sell": 194396
+ },
+ "2026-07-20": {
+  "usd_buy": 188500,
+  "usd_sell": 188600,
+  "gbp_buy": 253550,
+  "gbp_sell": 253750,
+  "usdt_buy": 189185,
+  "usdt_sell": 189185
+ },
+ "2026-07-21": {
+  "usd_buy": 190600,
+  "usd_sell": 190700,
+  "gbp_buy": 255550,
+  "gbp_sell": 255750,
+  "usdt_buy": 191252,
+  "usdt_sell": 191252
+ },
+ "2026-07-22": {
+  "usd_buy": 191400,
+  "usd_sell": 191500,
+  "gbp_buy": 255750,
+  "gbp_sell": 255950,
+  "usdt_buy": 192315,
+  "usdt_sell": 192315
+ },
+ "2026-07-23": {
+  "usd_buy": 191900,
+  "usd_sell": 192000,
+  "gbp_buy": 255950,
+  "gbp_sell": 256150,
+  "usdt_buy": 193912,
+  "usdt_sell": 193912
+ },
+ "2026-07-24": {
+  "usd_buy": 193200,
+  "usd_sell": 193300,
+  "gbp_buy": 257400,
+  "gbp_sell": 257600,
+  "usdt_buy": 194771,
+  "usdt_sell": 194771
+ },
+ "2026-07-25": {
+  "usd_buy": 190300,
+  "usd_sell": 190400,
+  "gbp_buy": 253400,
+  "gbp_sell": 253600,
+  "usdt_buy": 189711,
+  "usdt_sell": 189711
+ },
+ "2026-07-26": {
+  "usd_buy": 186600,
+  "usd_sell": 186700,
+  "gbp_buy": 248500,
+  "gbp_sell": 248700,
+  "usdt_buy": 186545,
+  "usdt_sell": 186545
+ },
+ "2026-07-27": {
+  "usd_buy": 190200,
+  "usd_sell": 190300,
+  "gbp_buy": 253200,
+  "gbp_sell": 253400,
+  "usdt_buy": 190100,
+  "usdt_sell": 190215
+ },
+ "2026-07-28": {
+  "usd_buy": 190700,
+  "usd_sell": 190800,
+  "gbp_buy": 253150,
+  "gbp_sell": 253350,
+  "usdt_buy": 190708,
+  "usdt_sell": 190708
+ },
+ "2026-07-29": {
+  "usd_buy": 193600,
+  "usd_sell": 193700,
+  "gbp_buy": 257350,
+  "gbp_sell": 257550,
+  "usdt_buy": 194712,
+  "usdt_sell": 194712
+ },
+ "2026-07-30": {
+  "usd_buy": 192900,
+  "usd_sell": 193000,
+  "gbp_buy": 257950,
+  "gbp_sell": 258150,
+  "usdt_buy": 193323,
+  "usdt_sell": 193323
+ },
+ "2026-07-31": {
+  "usd_buy": 193400,
+  "usd_sell": 193500,
+  "gbp_buy": 259450,
+  "gbp_sell": 259650,
+  "usdt_buy": 194550,
+  "usdt_sell": 194550
+ },
+ "2026-08-01": {
+  "usd_buy": 194500,
+  "usd_sell": 194600,
+  "gbp_buy": 262150,
+  "gbp_sell": 262350,
+  "usdt_buy": 194932,
+  "usdt_sell": 194932
+ },
+ "2026-08-02": {
+  "usd_buy": 191500,
+  "usd_sell": 191600,
+  "gbp_buy": 258100,
+  "gbp_sell": 258300,
+  "usdt_buy": 192954,
+  "usdt_sell": 192954
+ },
+ "2026-08-03": {
+  "usd_buy": 192300,
+  "usd_sell": 192400,
+  "gbp_buy": 258800,
+  "gbp_sell": 259000,
+  "usdt_buy": 192905,
+  "usdt_sell": 192905
+ },
+ "2026-08-04": {
+  "usd_buy": 190900,
+  "usd_sell": 191000,
+  "gbp_buy": 256700,
+  "gbp_sell": 256900,
+  "usdt_buy": 190436,
+  "usdt_sell": 190436
+ },
+ "2026-08-05": {
+  "usd_buy": 188100,
+  "usd_sell": 188200,
+  "gbp_buy": 253400,
+  "gbp_sell": 253600,
+  "usdt_buy": 188720,
+  "usdt_sell": 188720
+ },
+ "2026-08-06": {
+  "usd_buy": 187300,
+  "usd_sell": 187400,
+  "gbp_buy": 252100,
+  "gbp_sell": 252300,
+  "usdt_buy": 187985,
+  "usdt_sell": 187985
+ },
+ "2026-08-07": {
+  "usd_buy": 186600,
+  "usd_sell": 186700,
+  "gbp_buy": 250750,
+  "gbp_sell": 250950,
+  "usdt_buy": 187600,
+  "usdt_sell": 187600
+ },
+ "2026-08-08": {
+  "usd_buy": 186200,
+  "usd_sell": 186300,
+  "gbp_buy": 251150,
+  "gbp_sell": 251350,
+  "usdt_buy": 186211,
+  "usdt_sell": 186211
+ },
+ "2026-08-09": {
+  "usd_buy": 185850,
+  "usd_sell": 185950,
+  "gbp_buy": 250200,
+  "gbp_sell": 250400,
+  "usdt_buy": 185901,
+  "usdt_sell": 185901
+ },
+ "2026-08-10": {
+  "usd_buy": 185700,
+  "usd_sell": 185800,
+  "gbp_buy": 250600,
+  "gbp_sell": 250800,
+  "usdt_buy": 185892,
+  "usdt_sell": 185892
+ },
+ "2026-08-11": {
+  "usd_buy": 188400,
+  "usd_sell": 188500,
+  "gbp_buy": 254250,
+  "gbp_sell": 254450,
+  "usdt_buy": 186725,
+  "usdt_sell": 186725
+ },
+ "2026-08-12": {
+  "usd_buy": 187200,
+  "usd_sell": 187300,
+  "gbp_buy": 253000,
+  "gbp_sell": 253200,
+  "usdt_buy": 187097,
+  "usdt_sell": 187097
+ },
+ "2026-08-13": {
+  "usd_buy": 187500,
+  "usd_sell": 187600,
+  "gbp_buy": 253100,
+  "gbp_sell": 253300,
+  "usdt_buy": 187370,
+  "usdt_sell": 187370
+ },
+ "2026-08-14": {
+  "usd_buy": 187400,
+  "usd_sell": 187500,
+  "gbp_buy": 253700,
+  "gbp_sell": 253900,
+  "usdt_buy": 188523,
+  "usdt_sell": 188523
+ },
+ "2026-08-15": {
+  "usd_buy": 187200,
+  "usd_sell": 187300,
+  "gbp_buy": 253200,
+  "gbp_sell": 253400,
+  "usdt_buy": 186800,
+  "usdt_sell": 186800
+ },
+ "2026-08-16": {
+  "usd_buy": 186400,
+  "usd_sell": 186500,
+  "gbp_buy": 252050,
+  "gbp_sell": 252250,
+  "usdt_buy": 185817,
+  "usdt_sell": 185817
+ },
+ "2026-08-17": {
+  "usd_buy": 187100,
+  "usd_sell": 187200,
+  "gbp_buy": 253600,
+  "gbp_sell": 253800,
+  "usdt_buy": 186130,
+  "usdt_sell": 186130
+ },
+ "2026-08-18": {
+  "usd_buy": 188500,
+  "usd_sell": 188600,
+  "gbp_buy": 254850,
+  "gbp_sell": 255050,
+  "usdt_buy": 188117,
+  "usdt_sell": 188117
+ },
+ "2026-08-19": {
+  "usd_buy": 191100,
+  "usd_sell": 191200,
+  "gbp_buy": 258950,
+  "gbp_sell": 259150,
+  "usdt_buy": 190179,
+  "usdt_sell": 190179
+ },
+ "2026-08-20": {
+  "usd_buy": 190600,
+  "usd_sell": 190700,
+  "gbp_buy": 259900,
+  "gbp_sell": 260100,
+  "usdt_buy": 189509,
+  "usdt_sell": 189509
+ },
+ "2026-08-21": {
+  "usd_buy": 190700,
+  "usd_sell": 190800,
+  "gbp_buy": 260450,
+  "gbp_sell": 260650,
+  "usdt_buy": 189509,
+  "usdt_sell": 189509
+ },
+ "2026-08-22": {
+  "usd_buy": 193400,
+  "usd_sell": 193500,
+  "gbp_buy": 263750,
+  "gbp_sell": 263950,
+  "usdt_buy": 191881,
+  "usdt_sell": 191881
+ },
+ "2026-08-23": {
+  "usd_buy": 200900,
+  "usd_sell": 201000,
+  "gbp_buy": 274000,
+  "gbp_sell": 274200,
+  "usdt_buy": 198671,
+  "usdt_sell": 198671
+ },
+ "2026-08-24": {
+  "usd_buy": 203400,
+  "usd_sell": 203500,
+  "gbp_buy": 277300,
+  "gbp_sell": 277500,
+  "usdt_buy": 201655,
+  "usdt_sell": 201655
+ },
+ "2026-08-25": {
+  "usd_buy": 199900,
+  "usd_sell": 200000,
+  "gbp_buy": 272650,
+  "gbp_sell": 272850,
+  "usdt_buy": 195741,
+  "usdt_sell": 195741
+ },
+ "2026-08-26": {
+  "usd_buy": 200400,
+  "usd_sell": 200500,
+  "gbp_buy": 273000,
+  "gbp_sell": 273200,
+  "usdt_buy": 198265,
+  "usdt_sell": 198265
+ },
+ "2026-08-27": {
+  "usd_buy": 201400,
+  "usd_sell": 201500,
+  "gbp_buy": 273450,
+  "gbp_sell": 273650,
+  "usdt_buy": 200204,
+  "usdt_sell": 200204
+ },
+ "2026-08-28": {
+  "usd_buy": 201400,
+  "usd_sell": 201500,
+  "gbp_buy": 273600,
+  "gbp_sell": 273800,
+  "usdt_buy": 200709,
+  "usdt_sell": 200709
+ },
+ "2026-08-29": {
+  "usd_buy": 206600,
+  "usd_sell": 206700,
+  "gbp_buy": 279550,
+  "gbp_sell": 279750,
+  "usdt_buy": 203874,
+  "usdt_sell": 203874
+ },
+ "2026-08-30": {
+  "usd_buy": 205900,
+  "usd_sell": 206000,
+  "gbp_buy": 278900,
+  "gbp_sell": 279100,
+  "usdt_buy": 205561,
+  "usdt_sell": 205561
+ },
+ "2026-08-31": {
+  "usd_buy": 206200,
+  "usd_sell": 206300,
+  "gbp_buy": 279200,
+  "gbp_sell": 279400,
+  "usdt_buy": 207210,
+  "usdt_sell": 207210
+ }
+}

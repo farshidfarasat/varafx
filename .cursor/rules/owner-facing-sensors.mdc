@@ -1,0 +1,13 @@
+---
+description: Owner-facing answers and tables use only owner SoT; internals under Details
+alwaysApply: true
+---
+
+# Owner-facing sensors
+
+- Owner Match? / dry-run / verify **tables**: only owner books-of-record + Amount in system + Difference. Never internal mirrors, agent-built tabs, sync probes, or engineer-debug fields.
+- Owner **prose / checklists / where-to-look**: lead with Sheet link + Payments + column (e.g. Total/H). Do **not** name internal tabs/mirrors in the main body (including “ignore Ledger”). No raw `/api/…` dumps as the primary answer — Details only.
+- Fix the **class** (all non-SoT internals off owner surfaces + mechanical gates), not only one bad column or phrase.
+- When the owner voids prior guidance: same-turn supersede in `docs/memory/learnings.md`, harden craft/rule, re-issue under the new schema.
+- Gates: `src/lib/owner-facing-report.ts` (`assertOwnerFacingReportColumns`, `assertOwnerFacingProse`).
+- Craft: `docs/craft/owner-facing-sensors.md`

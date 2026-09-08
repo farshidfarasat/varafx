@@ -1,0 +1,32 @@
+---
+description: On failure or owner dispute, learn the class and harden a gate the same turn
+alwaysApply: true
+---
+
+# Failure / stuck-loop learning
+
+Learning specialization of the always-on Harness. On failure, run this protocol inside the loop.
+
+## Triggers (same turn)
+
+- Acceptance fails / task failure / stuck loop
+- Owner must repeat an instruction
+- Owner disputes a reported result
+- Owner voids prior guidance (“forget…”, “update your memory”)
+
+## Protocol
+
+1. Stop the bad loop (no re-defense of the failed report).
+2. Diagnose with evidence.
+3. Append `docs/memory/learnings.md` — VOID superseded entries when guidance changes.
+4. **Harden the class** (rule + craft + mechanical gate) — not only the one instance.
+5. Re-test / re-issue under the new playbook.
+6. Escalate last (A/B/C if two SoTs disagree).
+
+## Learn the class
+
+Instance patch alone is incomplete. Ask: what family of mistakes is this? Encode a rule that blocks the family (e.g. all internal sensors off owner-facing tables — not “omit this one column”).
+
+## Owner-facing
+
+Owner Match?/dry-run/verify = owner SoT + Amount in system only. Gate: `src/lib/owner-facing-report.ts`. Craft: `docs/craft/owner-facing-sensors.md` + `docs/craft/failure-stuck-loop-learning.md`.

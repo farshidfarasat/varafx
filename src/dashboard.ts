@@ -662,7 +662,10 @@ export const dashboardHtml = `<!DOCTYPE html>
         titleForex: "Global Forex Cross Rates",
         forexSource: "Powered by Google Finance",
         forexPairsCount: "6 currency pairs tracked",
-        forexUnavailable: "FX data unavailable"
+        forexUnavailable: "FX data unavailable",
+        qualityLive: "LIVE",
+        qualityDegraded: "DEGRADED",
+        qualityUnavailable: "UNAVAILABLE"
       },
       fa: {
         loading: "در حال دریافت قیمت‌های لحظه‌ای بازار...",
@@ -692,7 +695,10 @@ export const dashboardHtml = `<!DOCTYPE html>
         titleForex: "نرخ‌های متقاطع جهانی فارکس",
         forexSource: "دریافت از Google Finance",
         forexPairsCount: "۶ جفت ارز تحت پوشش",
-        forexUnavailable: "اطلاعات فارکس در دسترس نیست"
+        forexUnavailable: "اطلاعات فارکس در دسترس نیست",
+        qualityLive: "زنده",
+        qualityDegraded: "تنزل‌یافته",
+        qualityUnavailable: "در دسترس نیست"
       }
     };
 
@@ -731,6 +737,7 @@ export const dashboardHtml = `<!DOCTYPE html>
         renderCharts();
         renderForexRates();
         updateLastUpdated();
+        updateQualityBadge();
       }
     }
 
@@ -757,6 +764,7 @@ export const dashboardHtml = `<!DOCTYPE html>
         renderCharts();
         renderForexRates();
         updateLastUpdated();
+        updateQualityBadge();
         
         document.getElementById('loading').classList.add('hidden');
       } catch (err) {
@@ -773,6 +781,7 @@ export const dashboardHtml = `<!DOCTYPE html>
             renderConnections();
             renderForexRates();
             updateLastUpdated();
+            updateQualityBadge();
           }
         } catch (err) {
           console.error("Periodic rates fetch failed:", err);
@@ -789,6 +798,18 @@ export const dashboardHtml = `<!DOCTYPE html>
       const date = new Date(apiData.timestamp);
       const timeStr = date.toLocaleTimeString(currentLang === 'fa' ? 'fa-IR' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       document.getElementById('last-updated-text').innerText = dictionary[currentLang].lastUpdated + " " + timeStr;
+    }
+
+    function updateQualityBadge() {
+      const quality = apiData?.quality || 'unavailable';
+      const labels = {
+        live: dictionary[currentLang].qualityLive,
+        degraded: dictionary[currentLang].qualityDegraded,
+        unavailable: dictionary[currentLang].qualityUnavailable
+      };
+      const badge = document.getElementById('badge-live');
+      badge.innerText = labels[quality] || labels.unavailable;
+      badge.className = 'badge ' + (quality === 'live' ? 'badge-market' : 'badge-official');
     }
 
     function renderRatesTable() {

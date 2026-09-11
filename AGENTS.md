@@ -59,6 +59,7 @@ Good — same content, in the owner's format:
 
 - Verify with `npx tsc --noEmit` AND `npm test` (tests/rate-invariants.test.ts pins the fallback-chain order, source labeling, retention caps, and history-record window); fix until green before delivering.
 - Local run: `npm run dev`. Production deploy: `npm run deploy` (wrangler deploy) — a production mutation. Per the owner's release rule (ruling 2026-09-09, extending his 2026-09-08 defect ruling): a verified fix (tests + typecheck green) deploys end-to-end and is reported immediately after. Unattended scheduled sessions never deploy (a precaution for unattended work, not an owner gate). Publishing a brand-new public surface still needs his explicit ask.
+- PR policy (PR #1, 2026-08-31): agent tasks push a feature branch and open a PR instead of pushing main; the deploy workflow (.github/workflows/deploy.yml) gates main.
 - Provider changes keep the fallback chain intact: adding a provider never removes or reorders existing fallbacks.
 
 ## Agent skills

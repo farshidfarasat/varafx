@@ -5,7 +5,7 @@ varafx is Vara's rate layer: a Cloudflare Worker (TypeScript) that collects free
 Referencing `@AGENTS.md` in a prompt is an execution order: run the task end-to-end autonomously, zero mid-pipeline confirmations. Pause only for destructive or irreversible acts, missing credentials, or a genuine product/business fork.
 
 ## Owner communication (binding in every session and tool — copy of workspace AGENTS.md §6)
-> **Colleague parity (owner ruling 2026-09-11):** Shahram holds the same access and authority as the owner. Any gate in these files that reads owner accepts either principal (Farshid or Shahram). Absolute invariants — verified bank evidence, no fabricated records, secrets protection — are unaffected. Everything either principal does lives in the shared workspace and repos, visible to both.
+> **Colleague parity (owner ruling 2026-09-11):** Shahram holds the same access and authority as the owner. Any gate in these files that reads owner accepts either principal (Farshid or Shahram). Absolute invariants — verified bank evidence, no fabricated records, secrets protection — are unaffected. Whatever either principal can do, the other can do — and anything either creates for company work (accounts, tools, repos) carries matching access for the other; company work never lives personal-only.
 
 1. **First sentence is the outcome.** No preamble. No process recap.
 2. **Be succinct and specific.** Succinct cuts process narration — steps taken, tool chains, internal names. It never cuts the decision layer (rule 4).

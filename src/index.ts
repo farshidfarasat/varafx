@@ -8,6 +8,7 @@ import {
 } from "./rate-selection";
 import { classifyRateQuality, type RateQuality } from "./rate-quality";
 import { forexHistoryKey, ratesHistoryKey } from "./history-keys";
+import { extractGoogleFinanceRate, type GoogleFxRate } from "./google-fx";
 
 interface Env {
   KV?: KVNamespace;
@@ -18,11 +19,6 @@ interface Env {
 interface CacheStore {
   data: any;
   timestamp: number;
-}
-
-interface GoogleFxRate {
-  pair: string;
-  rate: number;
 }
 
 interface GoogleFxCacheData {
@@ -877,82 +873,11 @@ async function fetchGoogleFinanceRate(from: string, to: string): Promise<GoogleF
   }
 
   const html = await response.text();
-
-  // Pattern 1: data-last-price attribute
-  let match = html.match(/data-last-price="([^"]+)"/);
-  if (match) {
-    return { pair: `${from}/${to}`, rate: parseFloat(match[1]) };
+  const parsed = extractGoogleFinanceRate(html, from, to);
+  if (!parsed) {
+    throw new Error(`Could not parse rate for ${from}/${to}`);
   }
-
-  // Pattern 2: YMlKec fxKbKc class (main price display)
-  match = html.match(/class="YMlKec fxKbKc"[^>]*>([\d.,]+)</);
-  if (match) {
-    return { pair: `${from}/${to}`, rate: parseFloat(match[1].replace(/,/g, "")) };
-  }
-
-  // Pattern 3: PZPZlf class price element
-  match = html.match(/data-last-price="([^"]*)"|class="[^"]*kf1m0[^"]*"[^>]*>([\d.,]+)</);
-  if (match) {
-    const val = match[1] || match[2];
-    if (val) return { pair: `${from}/${to}`, rate: parseFloat(val.replace(/,/g, "")) };
-  }
-
-  // Pattern 4: Look for embedded JSON data (AF_initDataCallback)
-  const jsonMatch = html.match(/AF_initDataCallback\(\{key:\s*'ds:5'[\s\S]*?data:(\[[\s\S]*?\])\s*\}\);/);
-  if (jsonMatch) {
-    try {
-      const data = JSON.parse(jsonMatch[1]);
-      // Navigate to find the price (structure varies)
-      const price = extractPriceFromGoogleData(data);
-      if (price > 0) return { pair: `${from}/${to}`, rate: price };
-    } catch (e) {
-      // Fall through to next pattern
-    }
-  }
-
-  // Pattern 5: Title tag often contains the rate
-  const titleMatch = html.match(/<title>([\d.,]+)\s/);
-  if (titleMatch) {
-    const val = parseFloat(titleMatch[1].replace(/,/g, ""));
-    if (!isNaN(val) && val > 0) {
-      return { pair: `${from}/${to}`, rate: val };
-    }
-  }
-
-  throw new Error(`Could not parse rate for ${from}/${to}`);
-}
-
-function extractPriceFromGoogleData(data: any): number {
-  try {
-    // Try common paths in Google's data structure
-    let node = data;
-    // Navigate into nested arrays
-    while (Array.isArray(node) && node.length > 0) {
-      node = node[0];
-    }
-    if (Array.isArray(node) && node.length > 1) {
-      // Price is often the first numeric value in a sub-array
-      for (const item of node) {
-        if (Array.isArray(item)) {
-          for (const sub of item) {
-            if (typeof sub === "number" && sub > 0 && sub < 1000) {
-              return sub;
-            }
-            if (Array.isArray(sub)) {
-              for (const s of sub) {
-                if (typeof s === "number" && s > 0 && s < 1000) {
-                  return s;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  } catch (e) {
-    // Ignore
-  }
-  return 0;
+  return parsed;
 }
 
 function roundFx(value: number): number {

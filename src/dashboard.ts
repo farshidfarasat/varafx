@@ -889,7 +889,7 @@ export const dashboardHtml = `<!DOCTYPE html>
       if (!apiData || !apiData.connections) return;
 
       const t = dictionary[currentLang];
-      const services = ['Bonbast (Live)', 'Bonbast (Archive)', 'Alanchand', 'Navasan', 'Bitpin', 'Wallex', 'Nobitex', 'Google Finance'];
+      const services = ['Bonbast (Live)', 'Bonbast (Archive)', 'Alanchand', 'Bitpin', 'Wallex', 'Nobitex', 'Google Finance'];
 
       services.forEach(name => {
         const isConnected = apiData.connections[name];

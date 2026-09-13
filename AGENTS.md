@@ -42,11 +42,10 @@ Good — same content, in the owner's format:
 ## Architecture (src/index.ts is the whole worker)
 
 - **Routes:** `/` and `/dashboard` (HTML status page, `src/dashboard.ts`); `/api/rates` (latest Toman rates + conversions + 30-day trend + provider connection panel); `/api/history` (intraday history, 4 points/day); `/api/forex-history` (daily global FX snapshots, last 60 days).
-- **Toman USD/GBP chain:** Bonbast live (token scrape, primary + mirror host) → AlanChand scrape → Navasan API → Bonbast daily archive → hardcoded fallback constants (reported as source "Fallback").
+- **Toman USD/GBP chain:** Bonbast live (token scrape, primary + mirror host) → AlanChand scrape → Bonbast daily archive → hardcoded fallback constants (reported as source "Fallback"). Navasan was removed from the chain and dashboard by owner order 2026-09-13 — no API key exists (the worker's secret list is empty); do not re-add it or ask for a key.
 - **USDT:** Bitpin → Wallex → falls back to the selected USD values.
-- **Global FX (EUR/USD, GBP/USD, EUR/GBP + reciprocals):** Google Finance scrape → open.er-api.com fallback; missing pairs stay absent.
-- **Caching:** in-memory (5 min rates / 15 min global FX) + KV (`rates_latest`, `google_fx_rates`); crons every 30 min and daily 00:00 UTC write `rates_history` (4 fixed Iran-time points: 10:30 / 13:30 / 15:30 / 17:30 IRST) and `forex_history`.
-- **Secret:** `NAVASAN_API_KEY` (Worker secret). Never log, expose, or commit it.
+- **Global FX (EUR/USD, GBP/USD, EUR/GBP + reciprocals):** Google Finance scrape → open.er-api.com fallback; missing pairs stay absent. Google serves beta quote pages (`/finance/beta/quote/...`) since ~2026-09-13; the parser lives in `src/google-fx.ts` (pure, unit-tested) and is pair-anchored so a layout change surfaces as a failed source, never a wrong number.
+- **Caching:** in-memory (5 min rates / 15 min global FX) + KV (`rates_latest`, `google_fx_rates`). Crons: **every 5 minutes** (owner ruling 2026-09-13 — the website must track the market, not lag up to half an hour; before this it was every 30 min with a 35-min KV read TTL) plus daily 00:00 UTC; they write `rates_history` (4 fixed Iran-time points: 10:30 / 13:30 / 15:30 / 17:30 IRST, gated by `isHistoryRecordTime`) and `forex_history`. The `rates_latest` KV read TTL is 7 min — it only bounds recovery if crons fail.
 
 ## Invariants
 
@@ -61,7 +60,7 @@ Good — same content, in the owner's format:
 - Verify with `npx tsc --noEmit` AND `npm test` (tests/rate-invariants.test.ts pins the fallback-chain order, source labeling, retention caps, and history-record window); fix until green before delivering.
 - Local run: `npm run dev`. Production deploy: `npm run deploy` (wrangler deploy) — a production mutation. Per the owner's release rule (ruling 2026-09-09, extending his 2026-09-08 defect ruling): a verified fix (tests + typecheck green) deploys end-to-end and is reported immediately after. Unattended scheduled sessions never deploy (a precaution for unattended work, not an owner gate). Publishing a brand-new public surface still needs his explicit ask.
 - PR policy (PR #1, 2026-08-31): agent tasks push a feature branch and open a PR instead of pushing main; the deploy workflow (.github/workflows/deploy.yml) gates main.
-- Provider changes keep the fallback chain intact: adding a provider never removes or reorders existing fallbacks.
+- Provider changes keep the fallback chain intact: adding a provider never removes or reorders existing fallbacks. Sole exception: Navasan, removed by owner order 2026-09-13 (no API key exists).
 
 ## Agent skills
 

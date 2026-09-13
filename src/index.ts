@@ -12,7 +12,6 @@ import { extractGoogleFinanceRate, type GoogleFxRate } from "./google-fx";
 
 interface Env {
   KV?: KVNamespace;
-  NAVASAN_API_KEY?: string;
   AUTONOMY_KILL_SWITCH?: string;
 }
 
@@ -30,7 +29,10 @@ interface GoogleFxCacheData {
 let inMemoryCache: CacheStore | null = null;
 let inMemoryGoogleFxCache: CacheStore | null = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
-const KV_READ_TTL = 35 * 60 * 1000; // 35 minutes in milliseconds
+// Owner ruling 2026-09-13 (website showed up-to-35-min-old rates): the */5 cron
+// keeps `rates_latest` fresh, so this TTL only bounds recovery if crons fail —
+// a visitor then triggers a fresh collection instead of serving week-old cache.
+const KV_READ_TTL = 7 * 60 * 1000; // 7 minutes in milliseconds
 const GOOGLE_FX_CACHE_TTL = 15 * 60 * 1000; // 15 minutes for global FX rates
 
 export default {
@@ -280,10 +282,9 @@ async function readKeyedHistory(
 
 async function fetchFreshRates(env: Env): Promise<any> {
   const [
-    archiveResult, 
-    alanchandResult, 
-    navasanResult, 
-    bitpinResult, 
+    archiveResult,
+    alanchandResult,
+    bitpinResult,
     wallexResult,
     bonbastLiveResult,
     nobitexCheck,
@@ -291,7 +292,6 @@ async function fetchFreshRates(env: Env): Promise<any> {
   ] = await Promise.allSettled([
     fetchArchiveRates(),
     fetchAlanchandRates(),
-    fetchNavasanRates(env.NAVASAN_API_KEY),
     fetchBitpinUsdt(),
     fetchWallexUsdt(),
     fetchBonbastLive(),
@@ -337,24 +337,15 @@ async function fetchFreshRates(env: Env): Promise<any> {
     console.error("Alanchand fetch failed:", alanchandResult.status === "rejected" ? alanchandResult.reason : "Unknown error");
   }
 
-  let navasanUSD = null;
-  let navasanGBP = null;
-  if (navasanResult.status === "fulfilled" && navasanResult.value) {
-    navasanUSD = navasanResult.value.usd;
-    navasanGBP = navasanResult.value.gbp;
-  } else if (env.NAVASAN_API_KEY) {
-    console.error("Navasan fetch failed:", navasanResult.status === "rejected" ? navasanResult.reason : "Unknown error");
-  }
-
   // 1-2. Select USD and GBP rates. The fallback-chain order and source labels
   // are invariants — the logic lives in rate-selection.ts and is unit-tested.
   const usdPick = pickTomanRate(
-    { bonbastMode, bonbastDate, bonbast: bonbastUSD, alanchand: alanchandUSD, navasan: navasanUSD },
+    { bonbastMode, bonbastDate, bonbast: bonbastUSD, alanchand: alanchandUSD },
     174000,
     174500
   );
   const gbpPick = pickTomanRate(
-    { bonbastMode, bonbastDate, bonbast: bonbastGBP, alanchand: alanchandGBP, navasan: navasanGBP },
+    { bonbastMode, bonbastDate, bonbast: bonbastGBP, alanchand: alanchandGBP },
     231000,
     232000
   );
@@ -508,7 +499,6 @@ async function fetchFreshRates(env: Env): Promise<any> {
       "Bonbast (Live)": bonbastLiveResult.status === "fulfilled",
       "Bonbast (Archive)": archiveResult.status === "fulfilled",
       "Alanchand": alanchandResult.status === "fulfilled",
-      "Navasan": navasanResult.status === "fulfilled",
       "Bitpin": bitpinResult.status === "fulfilled",
       "Wallex": wallexResult.status === "fulfilled",
       "Nobitex": nobitexCheck.status === "fulfilled" && nobitexCheck.value.status === 200,
@@ -580,28 +570,6 @@ async function fetchAlanchandRates(): Promise<{ usd: { buy: number; sell: number
   return {
     usd: parseRow("usd"),
     gbp: parseRow("gbp")
-  };
-}
-
-async function fetchNavasanRates(apiKey?: string): Promise<{ usd: { buy: number; sell: number }; gbp: { buy: number; sell: number } }> {
-  if (!apiKey) throw new Error("Navasan API key missing");
-  const response = await fetchWithTimeout(`https://api.navasan.tech/latest/?api_key=${apiKey}`, {}, 5000);
-  if (!response.ok) throw new Error(`Navasan HTTP status: ${response.status}`);
-  const data: any = await response.json();
-
-  const getVal = (obj: any) => {
-    if (!obj) return 0;
-    const valStr = obj.value || obj;
-    return Math.round(parseFloat(valStr.toString().replace(/,/g, "")));
-  };
-
-  const usdBuy = getVal(data.usd_buy);
-  const usdSell = getVal(data.usd_sell);
-  const gbpVal = getVal(data.gbp_sell || data.gbp_buy || data.gbp);
-
-  return {
-    usd: { buy: usdBuy || usdSell, sell: usdSell || usdBuy },
-    gbp: { buy: gbpVal, sell: gbpVal },
   };
 }
 

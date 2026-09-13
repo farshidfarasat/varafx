@@ -7,7 +7,10 @@ account_id = "70911c2a8cdf1844b86156a3b2a2bc3a"
 enabled = true
 
 [triggers]
-crons = ["*/30 * * * *", "0 0 * * *"]
+# Every 5 min: owner ruling 2026-09-13 — website rates must track the market,
+# not lag up to half an hour. History writes stay gated to the four Iran target
+# hours by isHistoryRecordTime, so frequency does not multiply history rows.
+crons = ["*/5 * * * *", "0 0 * * *"]
 
 [[kv_namespaces]]
 binding = "KV"

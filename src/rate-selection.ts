@@ -2,7 +2,9 @@
 // are mechanically enforced by tests/rate-invariants.test.ts.
 //
 // Invariants (AGENTS.md):
-// - Fallback chain order: Bonbast (Live) -> AlanChand -> Navasan -> Bonbast (Archive) -> constants.
+// - Fallback chain order: Bonbast (Live) -> AlanChand -> Bonbast (Archive) -> constants.
+//   Navasan was removed from the chain by owner order 2026-09-13 — no API key
+//   exists; do not re-add it.
 // - Never bypass a working live provider to serve archive or fallback data.
 // - Every rate is published with its source; the hardcoded fallback constants
 //   are always labeled "Fallback" — never presented as a live provider's.
@@ -20,7 +22,6 @@ export interface TomanSourceSet {
   bonbastDate: string | null;
   bonbast: TomanQuote | null;
   alanchand: TomanQuote | null;
-  navasan: TomanQuote | null;
 }
 
 export interface SelectedRate extends TomanQuote {
@@ -37,9 +38,6 @@ export function pickTomanRate(
   }
   if (sources.alanchand) {
     return { buy: sources.alanchand.buy, sell: sources.alanchand.sell, source: "AlanChand" };
-  }
-  if (sources.navasan) {
-    return { buy: sources.navasan.buy, sell: sources.navasan.sell, source: "Navasan" };
   }
   if (sources.bonbastMode === "archive" && sources.bonbast) {
     return {

@@ -14,7 +14,6 @@ import {
 
 const LIVE = { buy: 173_900, sell: 174_100 };
 const ALANCHAND = { buy: 173_500, sell: 174_000 };
-const NAVASAN = { buy: 173_000, sell: 173_800 };
 const ARCHIVE = { buy: 172_000, sell: 172_500 };
 const USD_FALLBACK: [number, number] = [174_000, 174_500];
 
@@ -23,14 +22,12 @@ function sourceSet(overrides: {
   bonbastDate?: string | null;
   bonbast?: { buy: number; sell: number } | null;
   alanchand?: { buy: number; sell: number } | null;
-  navasan?: { buy: number; sell: number } | null;
 } = {}) {
   return {
     bonbastMode: null as "live" | "archive" | null,
     bonbastDate: null as string | null,
     bonbast: null as { buy: number; sell: number } | null,
     alanchand: null as { buy: number; sell: number } | null,
-    navasan: null as { buy: number; sell: number } | null,
     ...overrides,
   };
 }
@@ -44,7 +41,7 @@ test("all providers down -> hardcoded fallback constants, source exactly 'Fallba
 
 test("a working live Bonbast is never bypassed — it beats every other source", () => {
   const pick = pickTomanRate(
-    sourceSet({ bonbastMode: "live", bonbast: LIVE, alanchand: ALANCHAND, navasan: NAVASAN }),
+    sourceSet({ bonbastMode: "live", bonbast: LIVE, alanchand: ALANCHAND }),
     USD_FALLBACK[0],
     USD_FALLBACK[1]
   );
@@ -63,18 +60,7 @@ test("live Bonbast down -> AlanChand serves", () => {
   assert.equal(pick.buy, ALANCHAND.buy);
 });
 
-test("live Bonbast and AlanChand down -> Navasan serves", () => {
-  const pick = pickTomanRate(
-    sourceSet({ navasan: NAVASAN }),
-    USD_FALLBACK[0],
-    USD_FALLBACK[1]
-  );
-  assert.equal(pick.source, "Navasan");
-  assert.equal(pick.buy, NAVASAN.buy);
-  assert.equal(pick.sell, NAVASAN.sell);
-});
-
-test("archive Bonbast serves only when live, AlanChand and Navasan are all down, labeled with its date", () => {
+test("archive Bonbast serves only when live Bonbast and AlanChand are both down, labeled with its date", () => {
   const pick = pickTomanRate(
     sourceSet({ bonbastMode: "archive", bonbastDate: "2026-09-01", bonbast: ARCHIVE }),
     USD_FALLBACK[0],

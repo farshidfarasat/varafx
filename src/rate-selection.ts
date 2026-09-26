@@ -65,6 +65,28 @@ export function pickUsdtRate(
   return { buy: usdFallback.buy, sell: usdFallback.sell, source: "Fallback" };
 }
 
+/**
+ * Provider-agreement guard (2026-09-25, dark-company audit): a source name +
+ * fresh timestamp is not proof of correctness — a mis-parsed or
+ * plausible-but-wrong primary must not be labeled "live" when the secondary
+ * source disagrees wildly. The cap (4%) sits far above the normal
+ * inter-exchange spread (~1-2%) and far below the failure modes it exists to
+ * catch (stale/garbage quotes 10%+ off). A missing secondary never blocks the
+ * primary — agreement is a cross-check, not a dependency.
+ */
+export const PROVIDER_DISAGREEMENT_CAP = 0.04;
+
+export function providerAgreement(
+  picked: TomanQuote | null,
+  secondary: TomanQuote | null
+): { ok: boolean; deviation: number | null } {
+  if (!picked || !secondary || !(secondary.sell > 0)) {
+    return { ok: true, deviation: null };
+  }
+  const deviation = Math.abs(picked.sell - secondary.sell) / secondary.sell;
+  return { ok: deviation <= PROVIDER_DISAGREEMENT_CAP, deviation };
+}
+
 export const RATES_HISTORY_CAP = 1500;
 export const FOREX_HISTORY_CAP = 60;
 

@@ -5,6 +5,8 @@ import {
   parsePersianPrice,
   pickTomanRate,
   pickUsdtRate,
+  providerAgreement,
+  PROVIDER_DISAGREEMENT_CAP,
 } from "./rate-selection";
 import { classifyRateQuality, type RateQuality } from "./rate-quality";
 import { forexHistoryKey, ratesHistoryKey } from "./history-keys";
@@ -410,6 +412,27 @@ async function fetchFreshRates(env: Env): Promise<any> {
       Date.parse(observedAt),
     ),
   };
+
+  // Provider-agreement guard (2026-09-25 audit): a plausible-but-wrong
+  // primary is served but marked "degraded" — never "live" — when the
+  // secondary source disagrees beyond the cap. Consumers inherit the
+  // protection unchanged: the storefront order gate fails closed on
+  // non-live, and the cloud watchdog alarms on non-live quality.
+  for (const [key, picked, secondary] of [
+    ["USD", usdPick, alanchandUSD],
+    ["GBP", gbpPick, alanchandGBP],
+  ] as const) {
+    if (picked.source === "Bonbast (Live)" && qualityByRate[key] === "live") {
+      const agreement = providerAgreement(picked, secondary);
+      if (!agreement.ok) {
+        qualityByRate[key] = "degraded";
+        console.error(
+          `provider disagreement on ${key}: Bonbast ${picked.sell} vs AlanChand ${secondary!.sell} ` +
+            `(deviation ${(agreement.deviation! * 100).toFixed(1)}% > ${PROVIDER_DISAGREEMENT_CAP * 100}% cap) — marked degraded, money paths fail closed`,
+        );
+      }
+    }
+  }
   const quality = Object.values(qualityByRate).includes("unavailable")
     ? "unavailable"
     : Object.values(qualityByRate).includes("degraded")

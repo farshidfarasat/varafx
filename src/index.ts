@@ -15,6 +15,11 @@ import { extractGoogleFinanceRate, type GoogleFxRate } from "./google-fx";
 interface Env {
   KV?: KVNamespace;
   AUTONOMY_KILL_SWITCH?: string;
+  /** Storefront rates-push (30 Sep): the store's outbound route to workers.dev
+   *  is blocked on its hosting network, so this worker pushes its live payload
+   *  to the store's /api/vara/rates/push endpoint every 5 min instead. */
+  RATES_PUSH_URL?: string;
+  RATES_PUSH_TOKEN?: string;
 }
 
 interface CacheStore {
@@ -237,6 +242,31 @@ async function handleScheduled(env: Env): Promise<void> {
 
       await env.KV.put(ratesHistoryKey(ratesData.timestamp), JSON.stringify(historyEntry));
       console.log("Historical entry recorded in KV!");
+    }
+
+    // Push the fresh live payload to the storefront's server (books-loop 30 Sep:
+    // the storefront container's outbound route to *.workers.dev has been dead
+    // since ~23 Aug — Iranian-network workers.dev blocking — so its order-side
+    // live-rates fetch fails closed and no site order could price. varafx pushes
+    // inbound instead: the same live payload, delivered to the store's own
+    // /api/vara/rates/push endpoint; the store prices from it within a freshness
+    // window and still fails closed when the push is old, degraded, or missing).
+    if (env.RATES_PUSH_URL && env.RATES_PUSH_TOKEN) {
+      try {
+        const pushRes = await fetch(env.RATES_PUSH_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Rates-Token": env.RATES_PUSH_TOKEN,
+          },
+          body: JSON.stringify(ratesData),
+        });
+        if (!pushRes.ok) {
+          console.error("Rates push failed: HTTP " + pushRes.status);
+        }
+      } catch (pushErr: any) {
+        console.error("Rates push error:", pushErr.message);
+      }
     }
 
     // Record daily Google FX history (once per UTC day)

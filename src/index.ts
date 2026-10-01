@@ -272,12 +272,19 @@ async function handleScheduled(env: Env): Promise<void> {
     // Record daily Google FX history (once per UTC day)
     if (env.KV && ratesData.global_forex && Object.keys(ratesData.global_forex).length > 0) {
       const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      // The pair checks run at the builder too; this is defense in depth for
+      // the stored history specifically (a swapped day stays wrong for every
+      // reader until it is repaired, so nothing swapped may ever be put).
+      const normalized = normalizeForexPairs(ratesData.global_forex);
+      if (normalized.swapped) {
+        console.warn("forex history: inverted EUR/GBP pair normalized before the KV put (books-loop 30 Sep)");
+      }
       await env.KV.put(forexHistoryKey(ratesData.timestamp), JSON.stringify({
         date: today,
         timestamp: ratesData.timestamp,
         source: ratesData.global_forex_source,
         quality: ratesData.quality_by_rate.global_forex,
-        rates: ratesData.global_forex,
+        rates: normalized.rates,
       }));
       console.log("Google FX daily snapshot recorded in KV!");
     }
@@ -784,6 +791,37 @@ async function getCachedGoogleFxRates(env: Env): Promise<GoogleFxCacheData> {
   return data;
 }
 
+/**
+ * The forex pair checks (books-loop 30 Sep 2026, the Claude check order):
+ *  (a) self-inverse — GBP/EUR x EUR/GBP ≈ 1 (and each USD pair likewise);
+ *  (b) the triangle — EUR/GBP must equal (EUR/USD) / (GBP/USD) within 1%.
+ * (b) is the one that catches the 2026-08-31..09-12 swap class: the swapped
+ * values remain mutual inverses, so (a) alone stays green on a swapped day —
+ * both run, and a day that fails (b) while its inverse passes has the two
+ * EUR<->GBP keys SWAPPED back to the triangle. Pure; never invents a rate.
+ */
+export function normalizeForexPairs(
+  rates: Record<string, number>,
+): { rates: Record<string, number>; swapped: boolean; checked: boolean } {
+  const num = (k: string) => Number(rates[k]);
+  const eurUsd = num("EUR/USD");
+  const gbpUsd = num("GBP/USD");
+  const eurGbp = num("EUR/GBP");
+  const gbpEur = num("GBP/EUR");
+  if (!(eurUsd > 0) || !(gbpUsd > 0)) return { rates, swapped: false, checked: false };
+  const triangle = eurUsd / gbpUsd; // (USD per EUR) / (USD per GBP) = GBP per EUR
+  const out = { ...rates };
+  const off = (v: number) => !(v > 0) || Math.abs(v / triangle - 1) > 0.01;
+  if (off(eurGbp) && gbpEur > 0 && Math.abs(gbpEur / triangle - 1) <= 0.01) {
+    // EUR/GBP disagrees with the triangle while GBP/EUR matches it — the two
+    // keys are swapped. Swap them back.
+    out["EUR/GBP"] = gbpEur;
+    out["GBP/EUR"] = eurGbp;
+    return { rates: out, swapped: true, checked: true };
+  }
+  return { rates: out, swapped: false, checked: true };
+}
+
 async function fetchGoogleFinanceRates(): Promise<{
   rates: Record<string, number>;
   source: string;
@@ -838,7 +876,11 @@ async function fetchGoogleFinanceRates(): Promise<{
     }
   }
 
-  return { rates, source };
+  const normalized = normalizeForexPairs(rates);
+  if (normalized.swapped) {
+    console.warn("forex pairs: EUR/GBP and GBP/EUR were inverted (fallback-era shape) — normalized to the USD triangle before serving/storing");
+  }
+  return { rates: normalized.rates, source };
 }
 
 async function fetchFallbackFxRates(): Promise<Record<string, number>> {
@@ -859,7 +901,12 @@ async function fetchFallbackFxRates(): Promise<Record<string, number>> {
 
     const eurUsd = 1 / EUR;  // USD base: 1 USD = X EUR, so EUR/USD = 1/X
     const gbpUsd = 1 / GBP;  // USD base: 1 USD = X GBP, so GBP/USD = 1/X
-    const eurGbp = EUR / GBP;
+    // EUR/GBP carries GBP per EUR (the Google Finance EURGBP convention this
+    // module serves). GBP-per-EUR = (GBP per USD) / (EUR per USD). The old
+    // EUR/GBP = EUR/GBP division produced EUR-per-GBP — inverted, and the
+    // stored history carried it swapped on every fallback day (books-loop 30
+    // Sep 2026: 13 days, 2026-08-31..09-12).
+    const eurGbp = GBP / EUR;
 
     return {
       "EUR/USD": roundFx(eurUsd),

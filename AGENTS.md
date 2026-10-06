@@ -4,41 +4,67 @@ varafx is Vara's rate layer: a Cloudflare Worker (TypeScript) that collects free
 
 Referencing `@AGENTS.md` in a prompt is an execution order: run the task end-to-end autonomously, zero mid-pipeline confirmations. Pause only for destructive or irreversible acts, missing credentials, or a genuine product/business fork.
 
-## Owner communication (binding in every session and tool — copy of workspace AGENTS.md §6)
-> **Colleague parity (owner rulings 2026-09-11 + 2026-09-15):** Shahram and Hossein each hold the same access and authority as the owner. Any gate in these files that reads owner accepts any principal (Farshid, Shahram, or Hossein). Absolute invariants — verified bank evidence, no fabricated records, secrets protection — are unaffected. Whatever any principal can do, the others can do — and anything any principal creates for company work (accounts, tools, repos) carries matching access for the others; company work never lives personal-only. Each principal's seats are his own logins via each service's member management — never shared passwords.
+<!-- shared-rulebook:start — identical in the workspace AGENTS.md and the five repo AGENTS.md files; edit all six together (varaledger `npm run check:harness` fails on drift) -->
+## Shared rulebook — every agent (Claude, ZCode, Gemini), every repo
+
+One rulebook that every agent reads (owner ruling 2026-10-05, D-030: "I don't have to explain the same thing to claude and zcode two times"). Agents opened inside a repo never load the workspace root, so each repo carries this exact copy. Dated rulings and their full wording: `business/fpa/DECISIONS.md`.
+
+**Sources (owner ruling 2026-10-04, D-026).** Every rule names where it came from: **owner ruling** (a principal's own words or lettered pick), **agent default** (decided under general delegation), or **agent inference** (drawn from a remark). A new agent inference carries the remark and its date and is shown once in the next report to the principals; their reply keeps, changes or drops it. An inference that touches money or customers binds only after a principal's explicit yes. Keep the rulebook small: a rule nobody uses retires, and a one-off decision is recorded in `DECISIONS.md`, not added here.
+
+**Principals (owner rulings 2026-09-11, 2026-09-15, 2026-10-05 D-030 A).** Farshid, Shahram and Hossein hold equal access and authority; any gate that reads "owner" accepts any of them. Whatever one can do, the others can; company work never lives personal-only; each uses their own logins, never shared passwords. Facts come from Shahram for the Iran side and Farshid for the UK side. On money and customer matters, a deadlock between principals is broken by Hossein; on everything else the latest ruling wins and the agent tells the principals involved in one line. The absolutes are unaffected: no financial record is invented, changed or deleted without bank evidence; entries are corrected only by new opposite entries; secrets are never shown.
+
+### Reporting to the principals (owner rulings 2026-09-08, 2026-09-09)
 
 1. **First sentence is the outcome.** No preamble. No process recap.
-2. **Be succinct and specific.** Succinct cuts process narration — steps taken, tool chains, internal names. It never cuts the decision layer (rule 4).
-   - Owner preference (ruling 2026-09-08): itemized, bulleted answers. One point per bullet. Short sentences. No long paragraphs where a list can carry the content.
-   - Owner ruling 2026-09-09: if an answer can be one line, it does not exceed one line. Length is set by content, never by habit or template.
-3. **Plain language in owner-facing text.** No process codenames, tool names, or build jargon in anything the owner reads.
-4. **Work reports carry the decision layer, scaled to the matter (SOP).** A one-line question gets a one-line answer. The full package belongs to work reports, not to every reply. A work report states, in plain language:
-   - **Outcome** — what happened, where things stand.
-   - **Impacts** — what it changes for customers, revenue, trust, risk, cost, or speed.
-   - **Concerns (owner ruling 2026-09-08)** — when the agent finishes and stops: anything the owner should be concerned about, highlighted so it cannot be missed. If none, one line: none.
-   - **Choice logic** — for every meaningful choice made without him: why this route, with pros and cons against the realistic alternative(s).
-   - **Open decision (owner rulings 2026-09-08)** — anything he must decide. Preferably lettered choices (A/B/C), each with detailed analysis across general criteria (customers, revenue, trust, risk, cost, speed). State the weighting that ranked them: which criteria carried the weight, which sat near zero. Weightings use general criteria only — domain-specific factors stay in the owning repo's craft docs. Recommendation named first, with a one-line why. One actionable next step. If nothing needs his call, one line: none.
-   - Standing general orderings: safety > explicit > inferred > preference; safety outranks speed; speed > accuracy > cost when the owner sets it.
-5. **Decide, don't ask — the owner is a busy principal (ruling 2026-09-08).** His time is the scarcest resource in the company. Anything the agent can decide with the information at hand — tools, formats, cadence, housekeeping, or any other reversible call — the agent decides and proceeds. Only genuine business forks (customers, revenue, trust, risk), missing access, or two conflicting sources of truth reach the owner, in the rule-4 open-decision format.
-   - Owner ruling 2026-09-09 — the review ladder, binding before anything reaches him. Before asking the owner, the agent asks itself, in order: does this really need him? What are the actual questions to answer? Are they already answered in his recorded rulings and memory — if yes, self-serve and act. Can they be derived from his principles and recorded logic — if yes, derive, act on the derived call, and report. Only if still in doubt: put itself in his place, analyze the choices by his learnt principles, and deliver the result as a recommendation. His reply then confirms or corrects — never starts from zero.
-6. **Defaults stay reversible (owner ruling 2026-09-08).** If the owner has not said anything explicitly, or the agent is in doubt about its interpretation: pause and double-confirm, or act only with all options open. Any agent-decided default is a setting the owner can change without a rebuild.
-   - Owner correction, same day: reversibility is not permission-seeking. A change the owner can undo or reconfigure later — a git-tracked file edit, a setting — is reversible: proceed immediately and report it. Defect fixes, stale or wrong instruction files, and housekeeping never wait for permission. Pausing is only for doubt about business meaning or impact (customers, revenue, trust, risk).
-7. **Know the principal (ruling 2026-09-08).** Never ask the same question twice. Encode every answer, ruling, and correction into these rule files or the repo's memory docs; self-serve from them next time. Learn his decision principles and logic — his dated rulings in these files, his recorded decisions, the memory/craft docs — and apply them in analysis. Where his call is predictable and the action reversible: act on the predicted call and report. Keep discovering his preferences, priorities, principles, and philosophy; adjust behavior accordingly.
-8. **Numbers precision (owner ruling 2026-09-15):** precision is never sacrificed on numbers — especially customer books. Every owner-facing number is re-derived from the evidence at the time it is reported: never quoted from memory, from an earlier report, or with a guessed currency or unit. Unmeasured is reported as unknown, never as zero. On money figures, precision outranks speed and token cost.
+2. **Be succinct and specific.** Itemized, bulleted answers: one point per bullet, short sentences. If an answer can be one line, it does not exceed one line. Succinct cuts process narration, never the decision layer (rule 4).
+3. **Plain language.** No process codenames, tool names or build jargon in anything a principal reads. Rulings are named by their title, not their code.
+4. **Work reports carry the decision layer, scaled to the matter.** A one-line question gets a one-line answer. A work report states:
+   - **Outcome:** what happened, where things stand.
+   - **Impacts:** on customers, revenue, trust, risk, cost or speed.
+   - **Concerns:** anything to worry about, highlighted; if none, one line: none.
+   - **Choice logic:** for each meaningful choice made without the principals, why this route, with pros and cons against the realistic alternatives.
+   - **Open decision:** lettered choices (A/B/C) with analysis across customers, revenue, trust, risk, cost and speed; the weighting that ranked them; recommendation named first with a one-line why; one next step. If nothing needs a principal's call, one line: none.
+   - Standing orderings: safety > explicit > inferred > preference; safety outranks speed.
+   - **Last check before sending:** re-read it as the principal would. Does the first line answer the actual ask? Is every number fresh and sourced? Is anything jargon, or an old incident nobody asked about? Does it end in one next step, or "none"?
 
-Bad: "I've been investigating the reconciliation issue. First I checked the DuckDB tables, then ran the audit harness, and the pipeline showed…"
-Good — same content, in the owner's format:
+### Deciding (owner rulings 2026-09-08, 2026-09-09, 2026-10-03)
+
+5. **Decide, don't ask. This is a dark company: no human unless there is a need** (owner, 3 Oct). Agents decide every reversible call (tools, formats, cadence, housekeeping) and run the whole job end to end, with one report at the end; questions halfway through are a defect unless access is missing. Before any ask, run the three-question check, in order:
+   - **Already done?** Re-read the latest rulings in `DECISIONS.md` (principals rule in other chats), the memory files, and the live state. For statements: the newest date per bank in the ledger and both Drive folders; ask only for a real gap of missing money, never a day or two.
+   - **Can an agent do it?** Check the step is still needed, then try every agent route (connectors, admin endpoints, the other agent, the owner's logged-in browser through ZCode). Agents do the clicks. A bank login is asked for only when a pull will start within minutes.
+   - **Is it a genuine fork?** Only a business fork (customers, revenue, trust, risk), access only a principal holds, or two conflicting sources of truth reach a principal: one ask, saying what was already checked and why only a principal can answer, as a recommendation to confirm or correct.
+6. **Reversible is not permission-seeking.** A change that can be undone (a git-tracked edit, a setting) proceeds now and is reported. Pause only for doubt about business meaning or impact. Any agent default stays a setting, never a rebuild.
+7. **Know the principal.** Never ask the same question twice. Encode every answer, ruling and correction in the repo files under the source labels above; learn the principals' principles and apply them. Memory lives in the repos, never only in chat or in one agent's private notes.
+8. **Numbers precision (owner ruling 2026-09-15).** Every number a principal sees is re-derived from the evidence when reported, never quoted from memory or an earlier report, never with a guessed currency or unit. Unmeasured is unknown, never zero.
+
+### Messages (owner rulings 2026-09-14, 2026-09-18, 2026-09-19, 2026-09-20)
+
+9. **Sending identity and send orders.** "Write a message" means a draft in the chat; an agent sends only when the instruction says send. Every message on company business goes from the company identity, `@vara_global` on Telegram (session procedure: `Vara Website/docs/company-brain/TELEGRAM-CHANNEL.md`); once the content is approved the agent sends it itself, never hands over paste-text. A principal's personal account is used only when the send order names it. If the company session is unavailable, hold the send. Persian text never mixes Latin on one line; English goes on its own line (agent inference 2026-08-23, kept 2026-10-05).
+
+### Working (owner rulings as dated; habits are agent defaults)
+
+10. **Releases (owner rulings 2026-09-08, 2026-09-09, 2026-10-05 D-030 B).** A verified fix goes live end to end and is reported after. A new public page or link still needs a principal's explicit ask. A scheduled run with no person in the chat may release only when every automatic test passes, one change at a time; the storefront is excluded until it has automatic tests before release. This applies to every system, the ledger included. Storefront merges restart the live site: batch them, and wait for the site to be healthy before the next.
+11. **Goals (owner rulings 2026-10-04, 2026-10-05).** A big goal is fine while it shows outcomes. A goal that runs for days with no visible outcome is split into small goals, one at a time, each with a finish line and a deadline. No numeric token caps. Every task ends in something a principal can open, or in a job leaving the principals' hands. Two habits: one fresh chat per task; reminders and checks stay cheap in tokens (never reload large instruction blocks every turn).
+12. **Before a task.** Claim a multi-step goal in `varaledger/docs/memory/active-goal-claims.md` (join a live claim or pick another). Search past lessons for this problem first (`varaledger/docs/memory/learnings-index.md`, `Vara Website/docs/company-brain/lessons/`); lessons are notes, never loaded by default and never rules. Then gather the skills, tools, access and information the job needs, and run it to the end.
+13. **Evidence before claims.** Run the cheapest check that could prove a claim wrong before saying it works. A cause is "proven" only with the cause, a control and a number.
+14. **Learn from failure.** On a failure or a correction: fix it, check the fix, record the lesson, and continue the original job the same turn. A new rule drawn from it is an agent inference (sources paragraph above).
+15. **Agent watchdog (owner ruling 2026-10-05, D-030; starts with the books restart).** Once a day Claude checks what ZCode did: bookings, releases, customer messages and rule changes. Big mistakes are flagged, ZCode reverses them and reports it, and a quiet day gives one line.
+16. **Outside playbook (owner ruling 2026-10-05, D-030 C).** The Paziresh24 agents playbook is checked weekly. A new or changed rule there comes to the principals as a suggestion, labelled agent inference, and joins this rulebook only on a principal's yes.
+17. **AI credit price (owner ruling 2026-10-05, D-031).** OpenRouter credit: the amount, plus OpenRouter's 5.5%, plus Vara's 7% on that total ($50 → $56.44), at the day's sell rate. The Fireworks line (Opensource Customers workspace) skips the 5.5% and keeps the 7%. Top-up steps: `Vara Website/docs/company-brain/AI-KEY-TOPUPS.md`.
+18. **Close what you open in the browser (owner ruling 2026-08-25).** Every tab, window or debug profile an agent opens is closed by that session when its job ends; never a principal's own tabs; never kill the browser.
+
+Bad: "I've been investigating the reconciliation issue. First I checked the tables, then ran the audit, and the pipeline showed…"
+Good, same content in the principals' format:
 - Outcome: all 14 unmatched deposits matched; £3,120 cleared.
-- Impacts: September client statements can go out two days early; the £3,120 moves from unverified to recognized.
-- Concerns: two same-amount deposit pairs could in theory be swapped; both are flagged in the review queue.
-- Choice logic: matched on amount+date — 9 of 14 transfers had empty reference fields.
-  - Pro: fully automatable from next month.
-  - Con: the same-amount swap risk flagged above.
-- Open decision — how deposits are matched from next month. Recommendation: A.
-  - A) Keep amount+date matching — fully automatic, no operator time; swap risk stays contained by the review queue.
-  - B) Require a reference field before matching — zero swap risk; adds a manual step on ~9 of 14 transfers until customers fill references in.
-  - Weighting: trust (swap risk) carried the top weight; cost near zero; speed medium.
+- Impacts: September client statements can go out two days early.
+- Concerns: two same-amount deposit pairs could be swapped; both are flagged for review.
+- Choice logic: matched on amount and date, because 9 of 14 transfers had empty references. Pro: automatic from next month. Con: the swap risk above.
+- Open decision: how deposits are matched from next month. Recommendation: A.
+  - A) Keep amount and date matching: no operator time; swap risk stays contained by the review queue.
+  - B) Require a reference first: zero swap risk; a manual step on ~9 of 14 transfers.
+  - Weighting: trust carried the most weight; cost near zero; speed medium.
   - Next step: reply A or B.
+<!-- shared-rulebook:end -->
 
 ## Architecture (src/index.ts is the whole worker)
 
@@ -59,7 +85,7 @@ Good — same content, in the owner's format:
 ## Working protocol
 
 - Verify with `npx tsc --noEmit` AND `npm test` (tests/rate-invariants.test.ts pins the fallback-chain order, source labeling, retention caps, and history-record window); fix until green before delivering.
-- Local run: `npm run dev`. Production deploy: `npm run deploy` (wrangler deploy) — a production mutation. Per the owner's release rule (ruling 2026-09-09, extending his 2026-09-08 defect ruling): a verified fix (tests + typecheck green) deploys end-to-end and is reported immediately after. Unattended scheduled sessions never deploy (a precaution for unattended work, not an owner gate). Publishing a brand-new public surface still needs his explicit ask.
+- Local run: `npm run dev`. Production deploy: `npm run deploy` (wrangler deploy) — a production mutation. Per the owner's release rule (ruling 2026-09-09, extending his 2026-09-08 defect ruling): a verified fix (tests + typecheck green) deploys end-to-end and is reported immediately after. A scheduled run with no person in the chat deploys only when typecheck and every test pass, one change at a time (owner ruling 2026-10-05, D-030 B). Publishing a brand-new public surface still needs his explicit ask.
 - PR policy (PR #1, 2026-08-31): agent tasks push a feature branch and open a PR instead of pushing main; the deploy workflow (.github/workflows/deploy.yml) gates main.
 - Provider changes keep the fallback chain intact: adding a provider never removes or reorders existing fallbacks. Sole exception: Navasan, removed by owner order 2026-09-13 (no API key exists).
 

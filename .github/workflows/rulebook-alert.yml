@@ -1,0 +1,75 @@
+name: Rulebook change alert
+
+# Tells the three principals when the shared rulebook block in AGENTS.md
+# changes (owner pick B, 2026-10-06: alert only, edits stay free). Opens an
+# issue that @mentions them, so GitHub emails and pushes it to each of them.
+# The rates repo (varafx, public) is the reference copy: another repo whose
+# new copy already matches it stays quiet, so one rule change normally
+# alerts once, while a copy changed on its own still alerts.
+
+on:
+  push:
+    branches: [main]
+    paths: [AGENTS.md]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  alert:
+    if: vars.AUTONOMY_KILL_SWITCH != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Alert the principals if the shared rulebook changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          COMPARE_URL: ${{ github.event.compare }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          set -euo pipefail
+          block() { sed -n '/<!-- shared-rulebook:start/,/<!-- shared-rulebook:end -->/p' | tr -d '\r'; }
+          old="$(git show "$BEFORE:AGENTS.md" 2>/dev/null | block || true)"
+          new="$(git show "$AFTER:AGENTS.md" | block)"
+          if [ "$old" = "$new" ]; then
+            echo "Shared rulebook unchanged."
+            exit 0
+          fi
+
+          ref="$(curl -fsSL https://raw.githubusercontent.com/farshidfarasat/varafx/main/AGENTS.md | block || true)"
+          if [ "$GH_REPO" = "farshidfarasat/varafx" ]; then
+            match="This is the reference copy."
+          elif [ -z "$ref" ]; then
+            match="Could not read the rates repo copy to compare."
+          elif [ "$new" = "$ref" ]; then
+            echo "New copy matches the rates repo copy, which alerts for this change."
+            exit 0
+          else
+            match="**No.** The other copies still need the same change, or this copy went its own way."
+          fi
+
+          changes="$(diff <(printf '%s\n' "$old") <(printf '%s\n' "$new") | grep '^[<>]' | sed 's/^</-/; s/^>/+/' | cut -c1-400 | head -60 || true)"
+          {
+            echo "@farshidfarasat @shahramvahedi @smhhamidi: the shared rulebook changed in **${GH_REPO#*/}**."
+            echo
+            echo "- Changed by: ${ACTOR}"
+            echo "- Same as the rates repo copy: ${match}"
+            echo "- The change: ${COMPARE_URL}"
+            echo "- Full rulebook now: ${SERVER_URL}/${GH_REPO}/blob/${AFTER}/AGENTS.md"
+            echo
+            echo "Changed lines (- removed, + added):"
+            echo
+            echo '```diff'
+            printf '%s\n' "$changes"
+            echo '```'
+            echo
+            echo "<!-- automation: rulebook-change-alert -->"
+          } > body.md
+          gh issue create --title "Rulebook changed: ${GH_REPO#*/} ($(date -u +%F))" --body-file body.md

@@ -4,6 +4,7 @@ import {
   isHistoryRecordTime,
   parsePersianPrice,
   pickTomanRate,
+  pickUsdtBuyCost,
   pickUsdtRate,
   providerAgreement,
   PROVIDER_DISAGREEMENT_CAP,
@@ -239,6 +240,12 @@ async function handleScheduled(env: Env): Promise<void> {
         usd: ratesData.rates.USD,
         gbp: ratesData.rates.GBP,
         usdt: ratesData.rates.USDT,
+        usdt_buy_cost: ratesData.rates.USDT.buy_cost && ratesData.rates.USDT.buy_cost.quality === "live"
+          ? {
+              toman: ratesData.rates.USDT.buy_cost.toman,
+              source: ratesData.rates.USDT.buy_cost.source,
+            }
+          : null,
       };
 
       await env.KV.put(ratesHistoryKey(ratesData.timestamp), JSON.stringify(historyEntry));
@@ -409,6 +416,18 @@ async function fetchFreshRates(env: Env): Promise<any> {
   const finalUsdtSell = usdtPick.sell;
   const usdtSource = usdtPick.source;
 
+  // The honest tether buy cost (2026-10-17 spread review): the cheapest
+  // executable ask among the live order-book venues — Wallex today. Bitpin's
+  // last-trade print is not an ask (it sat 0.3% under the real ask when
+  // measured live), and the dollar rate is the thing being hedged, so
+  // buy_cost is null when no venue with a real ask lands — never a fallback.
+  // Kept out of quality_by_rate on purpose: its absence must never trip the
+  // payload's aggregate quality (the watchdog and the store gate on those
+  // keys; this field is observability + the record, not the money path).
+  const usdtBuyCost = pickUsdtBuyCost([
+    wallexQuote ? { name: "Wallex", ask: wallexQuote.ask } : null,
+  ]);
+
   // 4. Extract Google Finance global FX rates
   let globalForex: Record<string, number> | null = null;
   let globalForexSource: string | null = null;
@@ -521,6 +540,17 @@ async function fetchFreshRates(env: Env): Promise<any> {
         buy: finalUsdtBuy,
         sell: finalUsdtSell,
         unit: "Toman",
+        buy_cost: usdtBuyCost
+          ? {
+              toman: usdtBuyCost.toman,
+              source: usdtBuyCost.source,
+              quality: "live" as const,
+              venues: { wallex: wallexQuote ? { ask: wallexQuote.ask } : null },
+            }
+          : {
+              quality: "unavailable" as const,
+              venues: { wallex: wallexQuote ? { ask: wallexQuote.ask } : null },
+            },
         sources: {
           [usdtSource]: { price: finalUsdtSell, unit: "Toman" }
         }
@@ -656,7 +686,10 @@ async function fetchWallexUsdt(): Promise<{ bid: number; ask: number; last: numb
     headers: {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) VaraFX/1.0.0",
     },
-  }, 5000);
+    // 2026-10-17: Wallex answers 200 from consumer IPs with every UA (this
+    // one included) while the Workers egress fails — vantage-blocked or
+    // slow; the 10s timeout tests the slow case the 5s cutoff may have cut.
+  }, 10000);
   if (!response.ok) throw new Error(`Wallex HTTP status: ${response.status}`);
   const data: any = await response.json();
   const usdtTmn = data?.result?.symbols?.USDTTMN;

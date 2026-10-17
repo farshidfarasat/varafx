@@ -9,6 +9,7 @@ import {
   isHistoryRecordTime,
   parsePersianPrice,
   pickTomanRate,
+  pickUsdtBuyCost,
   pickUsdtRate,
 } from "../src/rate-selection.ts";
 
@@ -158,4 +159,19 @@ test("compileFallbackHistory maps archive history and stamps the latest USDT", (
   assert.equal(history[0].gbp.buy, 231_000);
   assert.equal(history[0].usdt.buy, 173_000);
   assert.deepEqual(compileFallbackHistory({}), []);
+});
+
+test("usdt buy cost: the cheapest live ask wins and names its venue", () => {
+  const pick = pickUsdtBuyCost([null, { name: "Wallex", ask: 263_598 }, { name: "Later", ask: 264_000 }]);
+  assert.equal(pick?.source, "Wallex");
+  assert.equal(pick?.toman, 263_598);
+});
+
+test("usdt buy cost: no live order-book venue -> null, never the print or the dollar rate", () => {
+  assert.equal(pickUsdtBuyCost([null, null]), null);
+  assert.equal(pickUsdtBuyCost([]), null);
+});
+
+test("usdt buy cost: a zero ask is not a venue", () => {
+  assert.equal(pickUsdtBuyCost([{ name: "Bad", ask: 0 }]), null);
 });

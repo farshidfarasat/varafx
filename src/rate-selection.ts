@@ -65,6 +65,29 @@ export function pickUsdtRate(
   return { buy: usdFallback.buy, sell: usdFallback.sell, source: "Fallback" };
 }
 
+export interface UsdtAskVenue {
+  name: string;
+  /** Toman per USDT — the executable ask from a real order book, not a
+   *  last-trade print. */
+  ask: number;
+}
+
+/**
+ * The honest tether buy cost (2026-10-17 spread review): the cheapest
+ * executable ask among the live order-book venues. Bitpin publishes only a
+ * last-trade print — a record of the last trade, not a price you can
+ * execute; measured live it sat 0.3% under the real ask — so it is never a
+ * buy-cost source, and the dollar rate is the thing being hedged. No live
+ * venue -> null: absence is published as null, never a fallback to the
+ * print or the dollar rate.
+ */
+export function pickUsdtBuyCost(venues: (UsdtAskVenue | null)[]): { toman: number; source: string } | null {
+  const live = venues.filter((v): v is UsdtAskVenue => !!v && v.ask > 0);
+  if (live.length === 0) return null;
+  const cheapest = live.slice().sort((a, b) => a.ask - b.ask)[0];
+  return { toman: Math.round(cheapest.ask), source: cheapest.name };
+}
+
 /**
  * Provider-agreement guard (2026-09-25, dark-company audit): a source name +
  * fresh timestamp is not proof of correctness — a mis-parsed or

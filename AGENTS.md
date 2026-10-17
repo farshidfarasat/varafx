@@ -19,13 +19,13 @@ One rulebook that every agent reads (owner ruling 2026-10-05, D-030: "I don't ha
 2. **Be succinct and specific.** Itemized, bulleted answers: one point per bullet, short sentences. If an answer can be one line, it does not exceed one line. Succinct cuts process narration, never the decision layer (rule 4).
 3. **Plain language.** No process codenames, tool names or build jargon in anything a principal reads. Rulings are named by their title, not their code.
 4. **Work reports carry the decision layer, scaled to the matter.** A one-line question gets a one-line answer. A work report states:
-   - **نتیجه (Outcome):** what happened, where things stand — the first lines answer the principal's actual question in his order: done or not, where it is stuck, his one action (owner ruling 2026-10-13).
-   - **پیامدها (Impacts):** on customers, revenue, trust, risk, cost or speed.
-   - **نگرانی‌ها (Concerns):** anything to worry about, highlighted; if none, one line: none.
-   - **منطق انتخاب (Choice logic):** for each meaningful choice made without the principals, why this route, with pros and cons against the realistic alternatives.
-   - **تصمیم باز (Open decision):** lettered choices (A/B/C) with analysis across customers, revenue, trust, risk, cost and speed; the weighting that ranked them; recommendation named first with a one-line why; one next step. If nothing needs a principal's call, one line: none.
+   - **Outcome:** what happened, where things stand — the first lines answer the principal's actual question in his order: done or not, where it is stuck, his one action (owner ruling 2026-10-13).
+   - **Impacts:** on customers, revenue, trust, risk, cost or speed.
+   - **Concerns:** anything to worry about, highlighted; if none, one line: none.
+   - **Choice logic:** for each meaningful choice made without the principals, why this route, with pros and cons against the realistic alternatives.
+   - **Open decision:** lettered choices (A/B/C) with analysis across customers, revenue, trust, risk, cost and speed; the weighting that ranked them; recommendation named first with a one-line why; one next step. If nothing needs a principal's call, one line: none.
    - Standing orderings: safety > explicit > inferred > preference; safety outranks speed.
-   - The labels a principal reads are Persian, never English tokens (owner ruling 2026-10-11, restated 2026-10-16). Sections are never dropped for brevity: succinct cuts process narration, never the decision layer; a genuinely-empty section says so in one line (owner ruling 2026-10-16). Every principal-facing reply is itemized with key concepts bolded and ends with a بلاکرها line (none → «بلاکرها: هیچ») (owner rulings 2026-10-12).
+   - Sections are never dropped for brevity: succinct cuts process narration, never the decision layer; a genuinely-empty section says so in one line (owner ruling 2026-10-16). Every principal-facing reply is itemized with key concepts bolded and ends with a بلاکرها line (none → «بلاکرها: هیچ») (owner rulings 2026-10-12).
    - Interim messages a principal reads mid-task carry substance too: results so far, blockers, remaining work — never bare process narration; the full five-section report lands once the work and its review are done (owner ruling 2026-10-13).
    - **Last check before sending:** re-read it as the principal would. Does the first line answer the actual ask — done, stuck, his action? Is every number fresh and sourced? Is anything jargon, or an old incident nobody asked about? Does it end in one next step, or "none"?
 
@@ -57,11 +57,11 @@ One rulebook that every agent reads (owner ruling 2026-10-05, D-030: "I don't ha
 
 Bad: "I've been investigating the reconciliation issue. First I checked the tables, then ran the audit, and the pipeline showed…"
 Good, same content in the principals' format:
-- نتیجه: all 14 unmatched deposits matched; £3,120 cleared.
-- پیامدها: September client statements can go out two days early.
-- نگرانی‌ها: two same-amount deposit pairs could be swapped; both are flagged for review.
-- منطق انتخاب: matched on amount and date, because 9 of 14 transfers had empty references. Pro: automatic from next month. Con: the swap risk above.
-- تصمیم باز: how deposits are matched from next month. Recommendation: A.
+- Outcome: all 14 unmatched deposits matched; £3,120 cleared.
+- Impacts: September client statements can go out two days early.
+- Concerns: two same-amount deposit pairs could be swapped; both are flagged for review.
+- Choice logic: matched on amount and date, because 9 of 14 transfers had empty references. Pro: automatic from next month. Con: the swap risk above.
+- Open decision: how deposits are matched from next month. Recommendation: A.
   - A) Keep amount and date matching: no operator time; swap risk stays contained by the review queue.
   - B) Require a reference first: zero swap risk; a manual step on ~9 of 14 transfers.
   - Weighting: trust carried the most weight; cost near zero; speed medium.

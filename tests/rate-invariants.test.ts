@@ -205,7 +205,7 @@ test("pricing basis: a persisted premium rides the fresh dollar level", () => {
     askPersisted: { ask: 263_580, usdSell: 262_700, source: "Wallex", observedAt: "2026-10-17T14:00:00Z" },
     now: Date.parse("2026-10-17T18:00:00Z"),
   });
-  // premium 263580/262700 = 1.003351 → 265000 × 1.003351 = 265888
+  // premium 263580/262700 = 1.0033498 → 265000 × 1.003351 = 265888
   assert.equal(basis.tomanPerUsd, 265_888);
   assert.equal(basis.ask?.mode, "persisted");
   assert.equal(basis.ask?.age_min, 240);

@@ -7,10 +7,14 @@ account_id = "70911c2a8cdf1844b86156a3b2a2bc3a"
 enabled = true
 
 [triggers]
-# Every 5 min: owner ruling 2026-09-13 — website rates must track the market,
-# not lag up to half an hour. History writes stay gated to the four Iran target
-# hours by isHistoryRecordTime, so frequency does not multiply history rows.
-crons = ["*/5 * * * *", "0 0 * * *"]
+# Every 3 min: owner ruling 2026-09-13 (website rates must track the market,
+# not lag up to half an hour), tightened by owner remark 2026-10-17 — the
+# dollar moves too fast for 5-min collection. All day, not just working
+# hours: the sharpest moves sit in the Iranian evening when US markets open.
+# History writes stay gated to the four Iran target hours by
+# isHistoryRecordTime and the history key is hour-truncated, so frequency
+# does not multiply history rows.
+crons = ["*/3 * * * *", "0 0 * * *"]
 
 [[kv_namespaces]]
 binding = "KV"

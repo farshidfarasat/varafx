@@ -55,6 +55,8 @@ One rulebook that every agent reads (owner ruling 2026-10-05, D-030: "I don't ha
 18. **Close what you open in the browser (owner ruling 2026-08-25).** Every tab, window or debug profile an agent opens is closed by that session when its job ends; never a principal's own tabs; never kill the browser.
 19. **Books writing and measure (owner rulings 2026-10-10, D-045, amended the same morning).** Rial top-ups and subscription charges are written by agents (the nightly run) with people typing the same lines in the Payments tabs as a cross-check. Each kind stops being typed only after 7 consecutive clean daily checks by Claude (no wrong agent entries of that kind; a wrong one resets the count); Claude's morning line reports the count and says when a kind can stop. An unidentified payer waits on a list worked daily, never an ask. Rial books are measured by bank coverage and waiting lines, never by matching the tab.
 
+20. **Evaluate vs measure (owner ruling 2026-10-18, D-063).** Evaluating how something is going and measuring how it is going are different acts. Where a measurement would need crazy contortions, a direct evaluation — good taste and judgment, named as an evaluation, never dressed as a number — is the check. The floors hold: money, absence-of-evidence claims, owner-facing numbers, proven causes and the books measure stay measured (rules 8, 13, 19); verify outcomes keep their four statuses; overrun or spin still requires an independent check (the evidence discipline craft).
+
 Bad: "I've been investigating the reconciliation issue. First I checked the tables, then ran the audit, and the pipeline showed…"
 Good, same content in the principals' format:
 - Outcome: all 14 unmatched deposits matched; £3,120 cleared.

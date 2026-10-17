@@ -7,6 +7,7 @@ import {
   capRatesHistory,
   compileFallbackHistory,
   computePricingBasis,
+  computePricingBuyBasis,
   isHistoryRecordTime,
   parsePersianPrice,
   pickTomanRate,
@@ -240,4 +241,70 @@ test("pricing basis: a persisted discount never lowers the basis below the dolla
     now: Date.parse("2026-10-17T18:00:00Z"),
   });
   assert.equal(basis.tomanPerUsd, 265_000);
+});
+
+test("buy basis: the lower of the dollar buy and a live tether bid wins", () => {
+  const now = Date.parse("2026-10-17T19:00:00Z");
+  const make = (bidLive: any) => ({
+    usdBuy: 263_600,
+    usdSource: "Bonbast (Live)",
+    usdObservedAt: "2026-10-17T19:00:00Z",
+    bidLive,
+    bidPersisted: null,
+    now,
+  });
+  const below = computePricingBuyBasis(make({ toman: 263_100, source: "Wallex", observedAt: "2026-10-17T19:00:00Z" }));
+  assert.equal(below.tomanPerUsd, 263_100); // the tether bid is the lower — we pay on the worse realization
+  assert.equal(below.protection, "usd+bid");
+  assert.equal(below.bid?.mode, "live");
+  const above = computePricingBuyBasis(make({ toman: 263_851, source: "Wallex", observedAt: "2026-10-17T19:00:00Z" }));
+  assert.equal(above.tomanPerUsd, 263_600); // the dollar buy is the lower — today's live shape
+  assert.equal(above.protection, "usd+bid");
+});
+
+test("buy basis: a persisted bid premium rides the fresh dollar-buy level", () => {
+  const basis = computePricingBuyBasis({
+    usdBuy: 263_600,
+    usdSource: "Bonbast (Live)",
+    usdObservedAt: "2026-10-17T23:00:00Z",
+    bidLive: null,
+    bidPersisted: { bid: 261_000, usdBuy: 262_000, source: "Wallex", observedAt: "2026-10-17T19:00:00Z" },
+    now: Date.parse("2026-10-17T23:00:00Z"),
+  });
+  // premium 261000/262000 = 0.9961832 → 263600 × 0.9961832 = 262594
+  assert.equal(basis.tomanPerUsd, 262_594);
+  assert.equal(basis.bid?.mode, "persisted");
+  assert.equal(basis.bid?.age_min, 240);
+  assert.equal(basis.protection, "usd+bid");
+});
+
+test("buy basis: no usable bid -> usd-buy-only, honestly labeled, never a block", () => {
+  const make = (bidPersisted: any) => ({
+    usdBuy: 263_600,
+    usdSource: "Bonbast (Live)",
+    usdObservedAt: "2026-10-17T03:00:00Z",
+    bidLive: null,
+    bidPersisted,
+    now: Date.parse("2026-10-17T03:00:00Z"),
+  });
+  const stale = computePricingBuyBasis(make({ bid: 261_000, usdBuy: 262_000, source: "Wallex", observedAt: "2026-10-16T19:00:00Z" })); // 8h old > 6h cap
+  assert.equal(stale.tomanPerUsd, 263_600);
+  assert.equal(stale.protection, "usd-buy-only");
+  assert.equal(stale.bid, null);
+  const none = computePricingBuyBasis(make(null));
+  assert.equal(none.protection, "usd-buy-only");
+  assert.equal(none.tomanPerUsd, 263_600);
+});
+
+test("buy basis: a persisted bid premium above 1 never raises the basis over the dollar buy", () => {
+  const basis = computePricingBuyBasis({
+    usdBuy: 263_600,
+    usdSource: "Bonbast (Live)",
+    usdObservedAt: "2026-10-17T23:00:00Z",
+    bidLive: null,
+    bidPersisted: { bid: 263_851, usdBuy: 263_600, source: "Wallex", observedAt: "2026-10-17T22:00:00Z" },
+    now: Date.parse("2026-10-17T23:00:00Z"),
+  });
+  // effective bid 263,851 > dollar buy 263,600 — the min keeps the lower
+  assert.equal(basis.tomanPerUsd, 263_600);
 });

@@ -2,6 +2,7 @@ import { dashboardHtml } from "./dashboard";
 import {
   compileFallbackHistory,
   computePricingBasis,
+  computePricingBuyBasis,
   isHistoryRecordTime,
   parsePersianPrice,
   pickTomanRate,
@@ -257,6 +258,13 @@ async function handleScheduled(env: Env): Promise<void> {
               ask_mode: ratesData.pricing_basis.ask ? ratesData.pricing_basis.ask.mode : null,
             }
           : null,
+        pricing_buy_basis: ratesData.pricing_buy_basis
+          ? {
+              toman_per_usd: ratesData.pricing_buy_basis.tomanPerUsd,
+              protection: ratesData.pricing_buy_basis.protection,
+              bid_mode: ratesData.pricing_buy_basis.bid ? ratesData.pricing_buy_basis.bid.mode : null,
+            }
+          : null,
       };
 
       await env.KV.put(ratesHistoryKey(ratesData.timestamp), JSON.stringify(historyEntry));
@@ -505,6 +513,38 @@ async function fetchFreshRates(env: Env): Promise<any> {
     now: Date.parse(observedAt),
   });
 
+  // The buy-side mirror (owner ruling 2026-10-17 evening, "build everything"):
+  // the cash-out basis is the LOWER of the dollar buy and the tether bid, same
+  // persistence pattern — every Wallex landing persists the bid with the USD
+  // buy it was observed against, and between landings the bid premium rides
+  // the fresh dollar-buy level. Same rules: never the Bitpin print, never a
+  // stale absolute price, honest "usd-buy-only" when nothing usable lands,
+  // nothing in quality_by_rate.
+  let bidPersisted: { bid: number; usdBuy: number; source: string; observedAt: string } | null = null;
+  if (env.KV) {
+    if (wallexQuote) {
+      bidPersisted = { bid: wallexQuote.bid, usdBuy: usdPick.buy, source: "Wallex", observedAt: observedAt };
+      await env.KV.put("usdt_bid_latest", JSON.stringify(bidPersisted));
+    } else {
+      const bidPersistedStr = await env.KV.get("usdt_bid_latest");
+      if (bidPersistedStr) {
+        try {
+          bidPersisted = JSON.parse(bidPersistedStr);
+        } catch {
+          bidPersisted = null;
+        }
+      }
+    }
+  }
+  const pricingBuyBasis = computePricingBuyBasis({
+    usdBuy: usdPick.buy,
+    usdSource: usdSource,
+    usdObservedAt: observedAt,
+    bidLive: wallexQuote ? { toman: wallexQuote.bid, source: "Wallex", observedAt: observedAt } : null,
+    bidPersisted,
+    now: Date.parse(observedAt),
+  });
+
   const qualityByRate: Record<string, RateQuality> = {
     USD: classifyRateQuality({ source: usdSource, observed_at: observedAt }, Date.parse(observedAt)),
     GBP: classifyRateQuality({ source: gbpSource, observed_at: observedAt }, Date.parse(observedAt)),
@@ -602,6 +642,7 @@ async function fetchFreshRates(env: Env): Promise<any> {
       },
     },
     pricing_basis: pricingBasis,
+    pricing_buy_basis: pricingBuyBasis,
     conversions: {
       USD_TO_IRR: {
         free_market: finalUsdSell * 10,

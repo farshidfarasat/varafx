@@ -89,6 +89,7 @@ export function pickUsdtBuyCost(venues: (UsdtAskVenue | null)[]): { toman: numbe
 }
 
 export const ASK_PERSIST_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+export const BID_PERSIST_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
 export interface PricingBasisInputs {
   /** The freshly picked USD sell rate (Toman per USD). */
@@ -177,6 +178,96 @@ export function computePricingBasis(inputs: PricingBasisInputs): PricingBasis {
     usd,
     ask: null,
     protection: "usd-only",
+  };
+}
+
+export interface PricingBuyBasisInputs {
+  /** The freshly picked USD buy rate (Toman per USD). */
+  usdBuy: number;
+  usdSource: string;
+  usdObservedAt: string;
+  /** The live executable bid this run, when Wallex landed (Toman per USDT). */
+  bidLive: { toman: number; source: string; observedAt: string } | null;
+  /** The last landed bid with the USD buy it was observed against (KV-persisted). */
+  bidPersisted: { bid: number; usdBuy: number; source: string; observedAt: string } | null;
+  now: number;
+  maxAgeMs?: number;
+}
+
+export interface PricingBuyBasis {
+  tomanPerUsd: number;
+  rule: "min(USD buy, USDT executable bid)";
+  usd: { buy: number; source: string; observed_at: string };
+  bid:
+    | {
+        toman: number;
+        source: string;
+        observed_at: string;
+        age_min: number;
+        mode: "live" | "persisted";
+      }
+    | null;
+  protection: "usd+bid" | "usd-buy-only";
+}
+
+/**
+ * The owner's buy-side ruling (2026-10-17 evening, "approve, go ahead, build
+ * everything"): the cash-out (buy) basis is the LOWER of the dollar buy rate
+ * and the tether executable bid — the exact mirror of the sell-side B rule
+ * (max of costs there; min of realizations here): we pay the customer on the
+ * worse of the two figures we can realize, so whichever way we settle the
+ * tether/dollars they hand us, we never pay more than we can get. Between
+ * Wallex bid landings the persisted bid protects through its premium
+ * (bid ÷ usdBuy at observation) riding the fresh dollar-buy level — never a
+ * stale absolute price. No usable bid → usd-buy-only, honestly labeled.
+ */
+export function computePricingBuyBasis(inputs: PricingBuyBasisInputs): PricingBuyBasis {
+  const usd = { buy: inputs.usdBuy, source: inputs.usdSource, observed_at: inputs.usdObservedAt };
+  const cap = inputs.maxAgeMs ?? BID_PERSIST_MAX_AGE_MS;
+  const ageMs = (observedAt: string) => inputs.now - Date.parse(observedAt);
+
+  if (inputs.bidLive && inputs.bidLive.toman > 0) {
+    const bid = {
+      toman: Math.round(inputs.bidLive.toman),
+      source: inputs.bidLive.source,
+      observed_at: inputs.bidLive.observedAt,
+      age_min: Math.max(0, Math.round(ageMs(inputs.bidLive.observedAt) / 60000)),
+      mode: "live" as const,
+    };
+    return {
+      tomanPerUsd: Math.min(inputs.usdBuy, bid.toman),
+      rule: "min(USD buy, USDT executable bid)",
+      usd,
+      bid,
+      protection: "usd+bid",
+    };
+  }
+
+  const p = inputs.bidPersisted;
+  if (p && p.bid > 0 && p.usdBuy > 0 && Number.isFinite(ageMs(p.observedAt)) && ageMs(p.observedAt) <= cap) {
+    const premium = p.bid / p.usdBuy;
+    const bid = {
+      toman: Math.round(inputs.usdBuy * premium),
+      source: p.source,
+      observed_at: p.observedAt,
+      age_min: Math.max(0, Math.round(ageMs(p.observedAt) / 60000)),
+      mode: "persisted" as const,
+    };
+    return {
+      tomanPerUsd: Math.min(inputs.usdBuy, bid.toman),
+      rule: "min(USD buy, USDT executable bid)",
+      usd,
+      bid,
+      protection: "usd+bid",
+    };
+  }
+
+  return {
+    tomanPerUsd: inputs.usdBuy,
+    rule: "min(USD buy, USDT executable bid)",
+    usd,
+    bid: null,
+    protection: "usd-buy-only",
   };
 }
 

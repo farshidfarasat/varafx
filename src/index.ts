@@ -17,7 +17,7 @@ interface Env {
   AUTONOMY_KILL_SWITCH?: string;
   /** Storefront rates-push (30 Sep): the store's outbound route to workers.dev
    *  is blocked on its hosting network, so this worker pushes its live payload
-   *  to the store's /api/vara/rates/push endpoint every 5 min instead. */
+   *  to the store's /api/vara/rates/push endpoint every 3 min instead. */
   RATES_PUSH_URL?: string;
   RATES_PUSH_TOKEN?: string;
 }
@@ -36,7 +36,8 @@ interface GoogleFxCacheData {
 let inMemoryCache: CacheStore | null = null;
 let inMemoryGoogleFxCache: CacheStore | null = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
-// Owner ruling 2026-09-13 (website showed up-to-35-min-old rates): the */5 cron
+// Owner ruling 2026-09-13 (website showed up-to-35-min-old rates), tightened
+// to */3 by owner remark 2026-10-17: the */3 cron
 // keeps `rates_latest` fresh, so this TTL only bounds recovery if crons fail —
 // a visitor then triggers a fresh collection instead of serving week-old cache.
 const KV_READ_TTL = 7 * 60 * 1000; // 7 minutes in milliseconds

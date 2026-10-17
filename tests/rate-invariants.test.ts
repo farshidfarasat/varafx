@@ -6,6 +6,7 @@ import {
   capForexHistory,
   capRatesHistory,
   compileFallbackHistory,
+  computePricingBasis,
   isHistoryRecordTime,
   parsePersianPrice,
   pickTomanRate,
@@ -174,4 +175,69 @@ test("usdt buy cost: no live order-book venue -> null, never the print or the do
 
 test("usdt buy cost: a zero ask is not a venue", () => {
   assert.equal(pickUsdtBuyCost([{ name: "Bad", ask: 0 }]), null);
+});
+
+test("pricing basis: a live ask above the dollar rate wins; below changes nothing", () => {
+  const now = Date.parse("2026-10-17T14:00:00Z");
+  const inputs = (askLive: any) => ({
+    usdSell: 262_900,
+    usdSource: "Bonbast (Live)",
+    usdObservedAt: "2026-10-17T14:00:00Z",
+    askLive,
+    askPersisted: null,
+    now,
+  });
+  const above = computePricingBasis(inputs({ toman: 263_580, source: "Wallex", observedAt: "2026-10-17T14:00:00Z" }));
+  assert.equal(above.tomanPerUsd, 263_580);
+  assert.equal(above.protection, "usd+ask");
+  assert.equal(above.ask?.mode, "live");
+  const below = computePricingBasis(inputs({ toman: 262_000, source: "Wallex", observedAt: "2026-10-17T14:00:00Z" }));
+  assert.equal(below.tomanPerUsd, 262_900);
+  assert.equal(below.protection, "usd+ask");
+});
+
+test("pricing basis: a persisted premium rides the fresh dollar level", () => {
+  const basis = computePricingBasis({
+    usdSell: 265_000,
+    usdSource: "Bonbast (Live)",
+    usdObservedAt: "2026-10-17T18:00:00Z",
+    askLive: null,
+    askPersisted: { ask: 263_580, usdSell: 262_700, source: "Wallex", observedAt: "2026-10-17T14:00:00Z" },
+    now: Date.parse("2026-10-17T18:00:00Z"),
+  });
+  // premium 263580/262700 = 1.003351 → 265000 × 1.003351 = 265888
+  assert.equal(basis.tomanPerUsd, 265_888);
+  assert.equal(basis.ask?.mode, "persisted");
+  assert.equal(basis.ask?.age_min, 240);
+  assert.equal(basis.protection, "usd+ask");
+});
+
+test("pricing basis: no usable ask -> usd-only, honestly labeled, never a block", () => {
+  const make = (askPersisted: any) => ({
+    usdSell: 262_900,
+    usdSource: "Bonbast (Live)",
+    usdObservedAt: "2026-10-17T22:00:00Z",
+    askLive: null,
+    askPersisted,
+    now: Date.parse("2026-10-17T22:00:00Z"),
+  });
+  const stale = computePricingBasis(make({ ask: 263_580, usdSell: 262_700, source: "Wallex", observedAt: "2026-10-17T14:00:00Z" }));
+  assert.equal(stale.tomanPerUsd, 262_900);
+  assert.equal(stale.protection, "usd-only");
+  assert.equal(stale.ask, null);
+  const none = computePricingBasis(make(null));
+  assert.equal(none.protection, "usd-only");
+  assert.equal(none.tomanPerUsd, 262_900);
+});
+
+test("pricing basis: a persisted discount never lowers the basis below the dollar rate", () => {
+  const basis = computePricingBasis({
+    usdSell: 265_000,
+    usdSource: "Bonbast (Live)",
+    usdObservedAt: "2026-10-17T18:00:00Z",
+    askLive: null,
+    askPersisted: { ask: 260_000, usdSell: 262_700, source: "Wallex", observedAt: "2026-10-17T17:00:00Z" },
+    now: Date.parse("2026-10-17T18:00:00Z"),
+  });
+  assert.equal(basis.tomanPerUsd, 265_000);
 });

@@ -1,6 +1,7 @@
 import { dashboardHtml } from "./dashboard";
 import {
   compileFallbackHistory,
+  computePricingBasis,
   isHistoryRecordTime,
   parsePersianPrice,
   pickTomanRate,
@@ -18,7 +19,9 @@ interface Env {
   AUTONOMY_KILL_SWITCH?: string;
   /** Storefront rates-push (30 Sep): the store's outbound route to workers.dev
    *  is blocked on its hosting network, so this worker pushes its live payload
-   *  to the store's /api/vara/rates/push endpoint every 3 min instead. */
+   *  to the store's /api/vara/rates/push endpoint on every scheduled run
+   *  instead (every 5 min in Iranian working hours, every 10 min off-hours —
+   *  see wrangler.toml). */
   RATES_PUSH_URL?: string;
   RATES_PUSH_TOKEN?: string;
 }
@@ -37,11 +40,12 @@ interface GoogleFxCacheData {
 let inMemoryCache: CacheStore | null = null;
 let inMemoryGoogleFxCache: CacheStore | null = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
-// Owner ruling 2026-09-13 (website showed up-to-35-min-old rates), tightened
-// to */3 by owner remark 2026-10-17: the */3 cron
-// keeps `rates_latest` fresh, so this TTL only bounds recovery if crons fail —
-// a visitor then triggers a fresh collection instead of serving week-old cache.
-const KV_READ_TTL = 7 * 60 * 1000; // 7 minutes in milliseconds
+// Owner ruling 2026-09-13 (website showed up-to-35-min-old rates; refined
+// 2026-10-17 evening: 5-min working hours / 10-min off-hours): the crons keep
+// `rates_latest` fresh, so this TTL only bounds recovery if crons fail — and
+// it must exceed the slowest cadence (10 min) or public reads in the tail
+// would trigger a visitor-side collection every off-hours cycle.
+const KV_READ_TTL = 12 * 60 * 1000; // 12 minutes in milliseconds
 const GOOGLE_FX_CACHE_TTL = 15 * 60 * 1000; // 15 minutes for global FX rates
 
 export default {
@@ -244,6 +248,13 @@ async function handleScheduled(env: Env): Promise<void> {
           ? {
               toman: ratesData.rates.USDT.buy_cost.toman,
               source: ratesData.rates.USDT.buy_cost.source,
+            }
+          : null,
+        pricing_basis: ratesData.pricing_basis
+          ? {
+              toman_per_usd: ratesData.pricing_basis.tomanPerUsd,
+              protection: ratesData.pricing_basis.protection,
+              ask_mode: ratesData.pricing_basis.ask ? ratesData.pricing_basis.ask.mode : null,
             }
           : null,
       };
@@ -460,6 +471,40 @@ async function fetchFreshRates(env: Env): Promise<any> {
   }
 
   const observedAt = new Date().toISOString();
+
+  // The tether-ask persistence layer (owner B ruling 2026-10-17): Wallex —
+  // the only reachable venue with a real ask — rejects the Workers egress on
+  // most runs (per-connection egress luck; ~1 of 6 landed at the 10s timeout,
+  // 2026-10-17), so every landing is persisted here with the USD sell it was
+  // observed against, and between landings computePricingBasis carries the
+  // persisted PREMIUM onto the fresh dollar level — never a stale absolute
+  // price. All quote-basis complexity lives in this worker by owner ruling:
+  // consumers ask for a rate and get the decision-ready basis.
+  let askPersisted: { ask: number; usdSell: number; source: string; observedAt: string } | null = null;
+  if (env.KV) {
+    if (wallexQuote) {
+      askPersisted = { ask: wallexQuote.ask, usdSell: usdPick.sell, source: "Wallex", observedAt: observedAt };
+      await env.KV.put("usdt_ask_latest", JSON.stringify(askPersisted));
+    } else {
+      const persistedStr = await env.KV.get("usdt_ask_latest");
+      if (persistedStr) {
+        try {
+          askPersisted = JSON.parse(persistedStr);
+        } catch {
+          askPersisted = null;
+        }
+      }
+    }
+  }
+  const pricingBasis = computePricingBasis({
+    usdSell: usdPick.sell,
+    usdSource: usdSource,
+    usdObservedAt: observedAt,
+    askLive: wallexQuote ? { toman: wallexQuote.ask, source: "Wallex", observedAt: observedAt } : null,
+    askPersisted,
+    now: Date.parse(observedAt),
+  });
+
   const qualityByRate: Record<string, RateQuality> = {
     USD: classifyRateQuality({ source: usdSource, observed_at: observedAt }, Date.parse(observedAt)),
     GBP: classifyRateQuality({ source: gbpSource, observed_at: observedAt }, Date.parse(observedAt)),
@@ -556,6 +601,7 @@ async function fetchFreshRates(env: Env): Promise<any> {
         }
       },
     },
+    pricing_basis: pricingBasis,
     conversions: {
       USD_TO_IRR: {
         free_market: finalUsdSell * 10,
@@ -682,23 +728,32 @@ async function fetchBitpinUsdt(): Promise<{ buy: number; sell: number }> {
 }
 
 async function fetchWallexUsdt(): Promise<{ bid: number; ask: number; last: number }> {
-  const response = await fetchWithTimeout("https://api.wallex.ir/v1/markets", {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) VaraFX/1.0.0",
-    },
-    // 2026-10-17: Wallex answers 200 from consumer IPs with every UA (this
-    // one included) while the Workers egress fails — vantage-blocked or
-    // slow; the 10s timeout tests the slow case the 5s cutoff may have cut.
-  }, 10000);
-  if (!response.ok) throw new Error(`Wallex HTTP status: ${response.status}`);
-  const data: any = await response.json();
-  const usdtTmn = data?.result?.symbols?.USDTTMN;
-  if (!usdtTmn || !usdtTmn.stats) throw new Error("USDTTMN symbol not found on Wallex");
-  return {
-    bid: Math.round(parseFloat(usdtTmn.stats.bidPrice)),
-    ask: Math.round(parseFloat(usdtTmn.stats.askPrice)),
-    last: Math.round(parseFloat(usdtTmn.stats.lastPrice)),
+  // 2026-10-17: Wallex answers 200 from consumer IPs with every user-agent
+  // (this one included) while the Workers egress lands ~1 of 6 runs at the
+  // 10s timeout — per-connection egress luck, so one retry takes a fresh
+  // connection and a new chance at a good egress IP.
+  const attempt = async (): Promise<{ bid: number; ask: number; last: number }> => {
+    const response = await fetchWithTimeout("https://api.wallex.ir/v1/markets", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) VaraFX/1.0.0",
+      },
+    }, 10000);
+    if (!response.ok) throw new Error(`Wallex HTTP status: ${response.status}`);
+    const data: any = await response.json();
+    const usdtTmn = data?.result?.symbols?.USDTTMN;
+    if (!usdtTmn || !usdtTmn.stats) throw new Error("USDTTMN symbol not found on Wallex");
+    return {
+      bid: Math.round(parseFloat(usdtTmn.stats.bidPrice)),
+      ask: Math.round(parseFloat(usdtTmn.stats.askPrice)),
+      last: Math.round(parseFloat(usdtTmn.stats.lastPrice)),
+    };
   };
+  try {
+    return await attempt();
+  } catch (firstErr: any) {
+    console.warn(`Wallex attempt failed (${firstErr.message}); retrying on a fresh connection`);
+    return await attempt();
+  }
 }
 
 async function fetchBonbastLive(): Promise<{ usd: { buy: number; sell: number }; gbp: { buy: number; sell: number } }> {

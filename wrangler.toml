@@ -7,14 +7,21 @@ account_id = "70911c2a8cdf1844b86156a3b2a2bc3a"
 enabled = true
 
 [triggers]
-# Every 3 min: owner ruling 2026-09-13 (website rates must track the market,
-# not lag up to half an hour), tightened by owner remark 2026-10-17 — the
-# dollar moves too fast for 5-min collection. All day, not just working
-# hours: the sharpest moves sit in the Iranian evening when US markets open.
-# History writes stay gated to the four Iran target hours by
-# isHistoryRecordTime and the history key is hour-truncated, so frequency
-# does not multiply history rows.
-crons = ["*/3 * * * *", "0 0 * * *"]
+# Owner ruling 2026-10-17 (evening, refining 2026-09-13): 5-min collection in
+# Iranian working hours is enough — the quota is not to be overused — and
+# off-hours may update less often. Working hours = Sat–Thu 08:30–19:29 IRST
+# (IRST = UTC+3:30) = UTC 05:00–15:59 on days 0-4,6; Friday, the Iranian
+# weekend, gets the slow cadence all day. Off-hours run every 10 minutes —
+# the sparsest cadence the storefront tolerates: its push-freshness gate
+# rejects payloads older than 11 min, so 10-min pushes leave a 1-minute
+# margin and a missed run only holds orders briefly (fail-closed by design,
+# owner ruling 2026-08-31). History writes stay gated to the four Iran
+# target hours by isHistoryRecordTime (they land in UTC hours 7/10/12/14,
+# inside the working-hours cron; Friday's cron fires :30, inside the 25-35
+# window) and the history key is hour-truncated, so cadence does not
+# multiply history rows. The former daily 00:00 UTC cron is folded into the
+# off-hours one — it fires at 00:00 and writes the date-keyed forex snapshot.
+crons = ["*/5 5-15 * * 0-4,6", "*/10 16-23,0-4 * * *", "*/10 5-15 * * 5"]
 
 [[kv_namespaces]]
 binding = "KV"

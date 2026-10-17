@@ -88,6 +88,98 @@ export function pickUsdtBuyCost(venues: (UsdtAskVenue | null)[]): { toman: numbe
   return { toman: Math.round(cheapest.ask), source: cheapest.name };
 }
 
+export const ASK_PERSIST_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+
+export interface PricingBasisInputs {
+  /** The freshly picked USD sell rate (Toman per USD). */
+  usdSell: number;
+  usdSource: string;
+  usdObservedAt: string;
+  /** The live executable ask this run, when Wallex landed (Toman per USDT). */
+  askLive: { toman: number; source: string; observedAt: string } | null;
+  /** The last landed ask with the USD sell it was observed against (KV-persisted). */
+  askPersisted: { ask: number; usdSell: number; source: string; observedAt: string } | null;
+  now: number;
+  maxAskAgeMs?: number;
+}
+
+export interface PricingBasis {
+  tomanPerUsd: number;
+  rule: "max(USD sell, USDT executable ask)";
+  usd: { sell: number; source: string; observed_at: string };
+  ask:
+    | {
+        toman: number;
+        source: string;
+        observed_at: string;
+        age_min: number;
+        mode: "live" | "persisted";
+      }
+    | null;
+  protection: "usd+ask" | "usd-only";
+}
+
+/**
+ * The owner's B ruling (2026-10-17): the quote basis is the HIGHER of the
+ * dollar sell rate and the tether executable ask — a tiny tether discount
+ * changes nothing, a tether premium is covered. Wallex (the only reachable
+ * venue with a real ask) rejects the Workers egress on most runs, so between
+ * landings the persisted ask protects through its PREMIUM: ask/usdSell is
+ * the slow-moving quantity, so the persisted premium rides the fresh dollar
+ * level — never a stale absolute price. No usable ask at all (none landed
+ * within the age cap) → usd-only, honestly labeled: the protection lapses
+ * exactly as it does today, and sales never block on it.
+ */
+export function computePricingBasis(inputs: PricingBasisInputs): PricingBasis {
+  const usd = { sell: inputs.usdSell, source: inputs.usdSource, observed_at: inputs.usdObservedAt };
+  const cap = inputs.maxAskAgeMs ?? ASK_PERSIST_MAX_AGE_MS;
+  const ageMs = (observedAt: string) => inputs.now - Date.parse(observedAt);
+
+  if (inputs.askLive && inputs.askLive.toman > 0) {
+    const ask = {
+      toman: Math.round(inputs.askLive.toman),
+      source: inputs.askLive.source,
+      observed_at: inputs.askLive.observedAt,
+      age_min: Math.max(0, Math.round(ageMs(inputs.askLive.observedAt) / 60000)),
+      mode: "live" as const,
+    };
+    return {
+      tomanPerUsd: Math.max(inputs.usdSell, ask.toman),
+      rule: "max(USD sell, USDT executable ask)",
+      usd,
+      ask,
+      protection: "usd+ask",
+    };
+  }
+
+  const p = inputs.askPersisted;
+  if (p && p.ask > 0 && p.usdSell > 0 && Number.isFinite(ageMs(p.observedAt)) && ageMs(p.observedAt) <= cap) {
+    const premium = p.ask / p.usdSell;
+    const ask = {
+      toman: Math.round(inputs.usdSell * premium),
+      source: p.source,
+      observed_at: p.observedAt,
+      age_min: Math.max(0, Math.round(ageMs(p.observedAt) / 60000)),
+      mode: "persisted" as const,
+    };
+    return {
+      tomanPerUsd: Math.max(inputs.usdSell, ask.toman),
+      rule: "max(USD sell, USDT executable ask)",
+      usd,
+      ask,
+      protection: "usd+ask",
+    };
+  }
+
+  return {
+    tomanPerUsd: inputs.usdSell,
+    rule: "max(USD sell, USDT executable ask)",
+    usd,
+    ask: null,
+    protection: "usd-only",
+  };
+}
+
 /**
  * Provider-agreement guard (2026-09-25, dark-company audit): a source name +
  * fresh timestamp is not proof of correctness — a mis-parsed or

@@ -16,7 +16,7 @@ One rulebook that every agent reads (owner ruling 2026-10-05, D-030: "I don't ha
 ### Reporting to the principals (owner rulings 2026-09-08, 2026-09-09)
 
 1. **First sentence is the outcome.** No preamble. No process recap.
-2. **Be succinct and specific.** Itemized, bulleted answers: one point per bullet, short sentences. If an answer can be one line, it does not exceed one line. Succinct cuts process narration, never the decision layer (rule 4).
+2. **Be succinct and specific.** Itemized, bulleted answers: one point per bullet, short sentences. A blank line between topics, and a short bold heading opening every section — an unbroken block of prose is a defect, not a style (owner correction 2026-10-19). If an answer can be one line, it does not exceed one line. Succinct cuts process narration, never the decision layer (rule 4).
 3. **Plain language.** No process codenames, tool names or build jargon in anything a principal reads. Rulings are named by their title, not their code.
 4. **Work reports carry the decision layer, scaled to the matter.** A one-line question gets a one-line answer. A work report states:
    - **Outcome:** what happened, where things stand — the first lines answer the principal's actual question in his order: done or not, where it is stuck, his one action (owner ruling 2026-10-13).
@@ -56,6 +56,8 @@ One rulebook that every agent reads (owner ruling 2026-10-05, D-030: "I don't ha
 19. **Books writing and measure (owner rulings 2026-10-10, D-045, amended the same morning).** Rial top-ups and subscription charges are written by agents (the nightly run) with people typing the same lines in the Payments tabs as a cross-check. Each kind stops being typed only after 7 consecutive clean daily checks by Claude (no wrong agent entries of that kind; a wrong one resets the count); Claude's morning line reports the count and says when a kind can stop. An unidentified payer waits on a list worked daily, never an ask. Rial books are measured by bank coverage and waiting lines, never by matching the tab.
 
 20. **Evaluate vs measure (owner ruling 2026-10-18, D-063).** Evaluating how something is going and measuring how it is going are different acts. Where a measurement would need crazy contortions, a direct evaluation — good taste and judgment, named as an evaluation, never dressed as a number — is the check. The floors hold: money, absence-of-evidence claims, owner-facing numbers, proven causes and the books measure stay measured (rules 8, 13, 19); verify outcomes keep their four statuses; overrun or spin still requires an independent check (the evidence discipline craft).
+
+21. **Batching and brevity (owner correction 2026-10-19).** Independent tool calls go in one message; a turn that makes three or more single-call requests which could have been batched is a defect. Replies are short by default, long only when a principal asked for a report. Exploration with three or more independent lookups goes to one subagent, not a chain of main-thread calls. The measure is the share of model requests carrying two or more tool calls; the target is at least half.
 
 Bad: "I've been investigating the reconciliation issue. First I checked the tables, then ran the audit, and the pipeline showed…"
 Good, same content in the principals' format:

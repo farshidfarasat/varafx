@@ -17,7 +17,7 @@ One rulebook that every agent reads (owner ruling 2026-10-05, D-030: "I don't ha
 
 1. **First sentence is the outcome.** No preamble. No process recap.
 2. **Be succinct and specific.** Itemized, bulleted answers: one point per bullet, short sentences. A blank line between topics, and a short bold heading opening every section — an unbroken block of prose is a defect, not a style (owner correction 2026-10-19). If an answer can be one line, it does not exceed one line. Succinct cuts process narration, never the decision layer (rule 4).
-3. **Plain language.** No process codenames, tool names or build jargon in anything a principal reads. Rulings are named by their title, not their code.
+3. **Plain language.** No process codenames, tool names or build jargon in anything a principal reads. Rulings are named by their title, not their code. An owner-facing reply never names the customer-side spreadsheet as one of the ledger's own books (owner correction 2026-10-21, fourth round): the split is numbered vs label books, and that file appears only when the question itself is about it.
 4. **Work reports carry the decision layer, scaled to the matter.** A one-line question gets a one-line answer. A work report states:
    - **Outcome:** what happened, where things stand — the first lines answer the principal's actual question in his order: done or not, where it is stuck, his one action (owner ruling 2026-10-13).
    - **Impacts:** on customers, revenue, trust, risk, cost or speed.

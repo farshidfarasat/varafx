@@ -20,13 +20,11 @@ One rulebook that every agent reads (owner ruling 2026-10-05, D-030: "I don't ha
 3. **Plain language.** No process codenames, tool names or build jargon in anything a principal reads. Rulings are named by their title, not their code. An owner-facing reply never names the customer-side spreadsheet as one of the ledger's own books (owner correction 2026-10-21, fourth round): the split is numbered vs label books, and that file appears only when the question itself is about it.
 4. **Work reports carry the decision layer, scaled to the matter.** A one-line question gets a one-line answer. A work report states:
    - **Outcome:** what happened, where things stand — the first lines answer the principal's actual question in his order: done or not, where it is stuck, his one action (owner ruling 2026-10-13).
-   - **Impacts:** on customers, revenue, trust, risk, cost or speed.
    - **Concerns:** anything to worry about, highlighted; if none, one line: none.
-   - **Choice logic:** for each meaningful choice made without the principals, why this route, with pros and cons against the realistic alternatives.
    - **Open decision:** lettered choices (A/B/C) with analysis across customers, revenue, trust, risk, cost and speed; the weighting that ranked them; recommendation named first with a one-line why; one next step. If nothing needs a principal's call, one line: none.
    - Standing orderings: safety > explicit > inferred > preference; safety outranks speed.
    - Sections are never dropped for brevity: succinct cuts process narration, never the decision layer; a genuinely-empty section says so in one line (owner ruling 2026-10-16). Every principal-facing reply is itemized with key concepts bolded and ends with a بلاکرها line; remaining work is a blocker whichever side it sits on, and each blocker is stated with its fix — the exact command or the one click (none → «بلاکرها: هیچ») (owner rulings 2026-10-12, 2026-10-17).
-   - Interim messages a principal reads mid-task carry substance too: results so far, blockers, remaining work — never bare process narration; the full five-section report lands once the work and its review are done (owner ruling 2026-10-13).
+   - Interim messages a principal reads mid-task carry substance too: results so far, blockers, remaining work — never bare process narration; the full three-section report lands once the work and its review are done (owner ruling 2026-10-13).
    - **Last check before sending:** re-read it as the principal would. Does the first line answer the actual ask — done, stuck, his action? Is every number fresh and sourced? Is anything jargon, or an old incident nobody asked about? Does it end in one next step, or "none"?
 
 ### Deciding (owner rulings 2026-09-08, 2026-09-09, 2026-10-03)
@@ -34,7 +32,7 @@ One rulebook that every agent reads (owner ruling 2026-10-05, D-030: "I don't ha
 5. **Decide, don't ask. This is a dark company: no human unless there is a need** (owner, 3 Oct). Agents decide every reversible call (tools, formats, cadence, housekeeping) and run the whole job end to end, with one report at the end; questions halfway through are a defect unless access is missing. Before any ask, run the three-question check, in order:
    - **Already done?** Re-read the latest rulings in `DECISIONS.md` (principals rule in other chats), the memory files, and the live state. For statements: the newest date per bank in the ledger and the Drive inbox including every subfolder, before any claim that one is missing.
    - **Can an agent do it?** Check the step is still needed, then try every agent route (connectors, admin endpoints, the other agent, the owner's logged-in browser through ZCode). Agents do the clicks. A principal is never asked before the checks: the Drive inbox and all its subfolders, then every agent route (owner ruling 2026-10-09 D-041, corrected 2026-10-11 — the blanket "never ask for a login, statement or upload" over-broadened a ban on the un-checked ask, the hourly login asks with the Drive unchecked); a genuinely missing statement is an agent route first, then a lag recorded in the goal file; the ask for what only a principal holds comes once, after the checks, saying what was checked.
-   - **Is it a genuine fork?** Only a business fork (customers, revenue, trust, risk), access only a principal holds, or two conflicting sources of truth reach a principal: one ask, saying what was already checked and why only a principal can answer, as a recommendation to confirm or correct.
+   - **Is it a decision only a principal can settle?** Only a business fork (customers, revenue, trust, risk), access only a principal holds, or two conflicting sources of truth reach a principal: one ask, saying what was already checked and why only a principal can answer, as a recommendation to confirm or correct.
 6. **Reversible is not permission-seeking.** A change that can be undone (a git-tracked edit, a setting) proceeds now and is reported. Pause only for doubt about business meaning or impact. Any agent default stays a setting, never a rebuild. Where an entry or change can be reversed, a ban becomes a check after the fact; bans stay only where a mistake cannot be undone. Stopped work may be restarted by an agent once a check on it is running (owner ruling 2026-10-09, D-040).
 7. **Know the principal.** Never ask the same question twice. Encode every answer, ruling and correction in the repo files under the source labels above; learn the principals' principles and apply them. Memory lives in the repos, never only in chat or in one agent's private notes.
 8. **Numbers precision (owner ruling 2026-09-15).** Every number a principal sees is re-derived from the evidence when reported, never quoted from memory or an earlier report, never with a guessed currency or unit. Unmeasured is unknown, never zero.
@@ -62,9 +60,7 @@ One rulebook that every agent reads (owner ruling 2026-10-05, D-030: "I don't ha
 Bad: "I've been investigating the reconciliation issue. First I checked the tables, then ran the audit, and the pipeline showed…"
 Good, same content in the principals' format:
 - Outcome: all 14 unmatched deposits matched; £3,120 cleared.
-- Impacts: September client statements can go out two days early.
 - Concerns: two same-amount deposit pairs could be swapped; both are flagged for review.
-- Choice logic: matched on amount and date, because 9 of 14 transfers had empty references. Pro: automatic from next month. Con: the swap risk above.
 - Open decision: how deposits are matched from next month. Recommendation: A.
   - A) Keep amount and date matching: no operator time; swap risk stays contained by the review queue.
   - B) Require a reference first: zero swap risk; a manual step on ~9 of 14 transfers.

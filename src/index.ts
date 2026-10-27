@@ -581,6 +581,15 @@ async function fetchFreshRates(env: Env): Promise<any> {
       ? "degraded"
       : "live";
 
+  // Owner order 2026-10-27: publish both bases rounded to the nearest 10
+  // Toman (270,399 -> 270,400). Presentation only — the selection model
+  // (sources, fallback chain, max/min rules, premium riding) is untouched,
+  // and every consumer — ticker, quote, order pricing, records — reads the
+  // same rounded figure, so the shown price never diverges from the charged
+  // one. Rounding lives here at publication, not in rate-selection.ts, so
+  // the pure pricing invariants and their tests stay exact.
+  const round10 = (n: number) => Math.round(n / 10) * 10;
+
   return {
     status: quality === "live" ? "success" : quality,
     quality,
@@ -641,8 +650,8 @@ async function fetchFreshRates(env: Env): Promise<any> {
         }
       },
     },
-    pricing_basis: pricingBasis,
-    pricing_buy_basis: pricingBuyBasis,
+    pricing_basis: { ...pricingBasis, tomanPerUsd: round10(pricingBasis.tomanPerUsd) },
+    pricing_buy_basis: { ...pricingBuyBasis, tomanPerUsd: round10(pricingBuyBasis.tomanPerUsd) },
     conversions: {
       USD_TO_IRR: {
         free_market: finalUsdSell * 10,

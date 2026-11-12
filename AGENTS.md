@@ -20,10 +20,9 @@ One rulebook that every agent reads (owner ruling 2026-10-05, D-030: "I don't ha
 3. **Plain language.** No process codenames, tool names or build jargon in anything a principal reads. Rulings are named by their title, not their code. An owner-facing reply never names the customer-side spreadsheet as one of the ledger's own books (owner correction 2026-10-21, fourth round): the split is numbered vs label books, and that file appears only when the question itself is about it.
 4. **Work reports carry the decision layer, scaled to the matter.** A one-line question gets a one-line answer. A work report states:
    - **Outcome:** what happened, where things stand — the first lines answer the principal's actual question in his order: done or not, where it is stuck, his one action (owner ruling 2026-10-13).
-   - **Concerns:** anything to worry about, highlighted; if none, one line: none.
-   - **Open decision:** lettered choices (A/B/C) with analysis across customers, revenue, trust, risk, cost and speed; the weighting that ranked them; recommendation named first with a one-line why; one next step. If nothing needs a principal's call, one line: none.
+   - **Open items:** every item that is HIS to attend, each naming what it needs from him — a **decision** (lettered choices (A/B/C) with analysis across customers, revenue, trust, risk, cost and speed; the weighting that ranked them; recommendation named first with a one-line why; one next step) or a **watch** (the risk, what is running about it, the next checkpoint). Agent-owned work items never appear here (D-092); blockers live on the Blockers line. If nothing needs his attention, one line: none. (owner correction 2026-11-11: "don't you think concerns and open items should be one thing?") **Topic scope (owner correction 2026-11-12):** an open item is raised only in the chat whose topic it belongs to — an unrelated item found along the way is written to its durable home (open-jobs.md, DECISIONS.md, the topic's goal file) and raised in that topic's own chat, never in any form inside another chat's report.
    - Standing orderings: safety > explicit > inferred > preference; safety outranks speed.
-   - Sections are never dropped for brevity: succinct cuts process narration, never the decision layer; a genuinely-empty section says so in one line (owner ruling 2026-10-16). Every principal-facing reply is itemized with key concepts bolded and ends with a بلاکرها line; remaining work is a blocker whichever side it sits on, and each blocker is stated with its fix — the exact command or the one click (none → «بلاکرها: هیچ») (owner rulings 2026-10-12, 2026-10-17).
+   - Sections are never dropped for brevity: succinct cuts process narration, never the decision layer; a genuinely-empty section says so in one line (owner ruling 2026-10-16). Every principal-facing reply is itemized with key concepts bolded and ends with a بلاکرها line; remaining work is a blocker whichever side it sits on, and each blocker is stated with its fix — the exact command or the one click (none → Blockers: none; chat replies to Hossein are English and close with the English Blockers line — owner ruling D-088, 2026-11-09) (owner rulings 2026-10-12, 2026-10-17, D-088 2026-11-09).
    - Interim messages a principal reads mid-task carry substance too: results so far, blockers, remaining work — never bare process narration; the full three-section report lands once the work and its review are done (owner ruling 2026-10-13).
    - **Last check before sending:** re-read it as the principal would. Does the first line answer the actual ask — done, stuck, his action? Is every number fresh and sourced? Is anything jargon, or an old incident nobody asked about? Does it end in one next step, or "none"?
 
@@ -60,12 +59,13 @@ One rulebook that every agent reads (owner ruling 2026-10-05, D-030: "I don't ha
 Bad: "I've been investigating the reconciliation issue. First I checked the tables, then ran the audit, and the pipeline showed…"
 Good, same content in the principals' format:
 - Outcome: all 14 unmatched deposits matched; £3,120 cleared.
-- Concerns: two same-amount deposit pairs could be swapped; both are flagged for review.
-- Open decision: how deposits are matched from next month. Recommendation: A.
-  - A) Keep amount and date matching: no operator time; swap risk stays contained by the review queue.
-  - B) Require a reference first: zero swap risk; a manual step on ~9 of 14 transfers.
-  - Weighting: trust carried the most weight; cost near zero; speed medium.
-  - Next step: reply A or B.
+- Open items:
+  - Watch: two same-amount deposit pairs could be swapped; both are flagged for review.
+  - Decision: how deposits are matched from next month. Recommendation: A.
+    - A) Keep amount and date matching: no operator time; swap risk stays contained by the review queue.
+    - B) Require a reference first: zero swap risk; a manual step on ~9 of 14 transfers.
+    - Weighting: trust carried the most weight; cost near zero; speed medium.
+    - Next step: reply A or B.
 <!-- shared-rulebook:end -->
 
 ## Architecture (src/index.ts is the whole worker)

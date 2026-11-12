@@ -602,13 +602,13 @@ export const dashboardHtml = `<!DOCTYPE html>
     <!-- Charts Section -->
     <div class="charts-grid">
       <div class="glass-card">
-        <div class="card-title" id="title-usd-chart">USD Free Market Trend (30 Days)</div>
+        <div class="card-title" id="title-usd-chart">USD Free Market Trend (45 Days)</div>
         <div class="chart-container" id="usd-chart-container">
           <!-- SVG line chart populated by JS -->
         </div>
       </div>
       <div class="glass-card">
-        <div class="card-title" id="title-gbp-chart">GBP Free Market Trend (30 Days)</div>
+        <div class="card-title" id="title-gbp-chart">GBP Free Market Trend (45 Days)</div>
         <div class="chart-container" id="gbp-chart-container">
           <!-- SVG line chart populated by JS -->
         </div>
@@ -647,8 +647,8 @@ export const dashboardHtml = `<!DOCTYPE html>
         titleConnections: "Service Connection Status",
         connected: "Connected",
         disconnected: "Disconnected",
-        titleUsdChart: "USD Free Market Trend (30 Days)",
-        titleGbpChart: "GBP Free Market Trend (30 Days)",
+        titleUsdChart: "USD Free Market Trend (45 Days)",
+        titleGbpChart: "GBP Free Market Trend (45 Days)",
         titleApiDocs: "Developer API Documentation",
         apiDocsDesc: "Integrate our aggregated exchange rate feed into your own services. The endpoint returns JSON containing aggregated live market rates, bidirectional conversions, and 12-month historical pricing.",
         copyBtn: "Copy URL",
@@ -680,8 +680,8 @@ export const dashboardHtml = `<!DOCTYPE html>
         titleConnections: "وضعیت اتصال سرویس‌ها",
         connected: "متصل",
         disconnected: "قطع",
-        titleUsdChart: "نمودار قیمت دلار بازار آزاد (۳۰ روز گذشته)",
-        titleGbpChart: "نمودار قیمت پوند بازار آزاد (۳۰ روز گذشته)",
+        titleUsdChart: "نمودار قیمت دلار بازار آزاد (۴۵ روز گذشته)",
+        titleGbpChart: "نمودار قیمت پوند بازار آزاد (۴۵ روز گذشته)",
         titleApiDocs: "مستندات ای‌پی‌آی (API) توسعه‌دهندگان",
         apiDocsDesc: "از اطلاعات نرخ‌های لحظه‌ای و ترکیب‌شده ما در نرم‌افزارها و پروژه‌های خود استفاده کنید. خروجی این بخش به فرمت استاندارد JSON است و شامل نرخ‌های آزاد و تاریخچه ۱۲ ماهه می‌باشد.",
         copyBtn: "کپی آدرس",
@@ -983,9 +983,11 @@ export const dashboardHtml = `<!DOCTYPE html>
       let gbpHistory = [];
 
       if (historyData && historyData.length > 0) {
-        // If history is persistent, we show the last 30 days.
-        // Since we store 4 points per day, 30 days is 120 data points!
-        const trendHistory = historyData.slice(-120);
+        // Date-based window, never a point count: the collector stores 8
+        // snapshots/day (this slice was sized for 4), so a fixed count had
+        // silently shrunk the chart to ~15 days while the title said 30.
+        const cutoffMs = Date.now() - 45 * 24 * 60 * 60 * 1000;
+        const trendHistory = historyData.filter(h => new Date(h.timestamp).getTime() >= cutoffMs);
         usdHistory = trendHistory.map(h => ({ date: formatTimestamp(h.timestamp), sell: h.usd.sell }));
         gbpHistory = trendHistory.map(h => ({ date: formatTimestamp(h.timestamp), sell: h.gbp.sell }));
       } else if (apiData.history_30d) {
@@ -1067,7 +1069,11 @@ export const dashboardHtml = `<!DOCTYPE html>
       });
 
       let dots = '';
+      // Thin the hover dots so a longer window stays readable; the line itself
+      // keeps every point. The last point is always included.
+      const dotStride = Math.max(1, Math.ceil(numPoints / 120));
       coords.forEach((c, i) => {
+        if (i % dotStride !== 0 && i !== numPoints - 1) return;
         dots += \`<circle cx="\${c.x}" cy="\${c.y}" r="3" fill="#fff" stroke="\${lineClass.includes('gbp') ? '#a855f7' : '#6366f1'}" stroke-width="2" style="cursor: pointer;" onmouseover="showTooltip(event, '\${c.dp.date}', \${c.dp.sell})" onmouseout="hideTooltip()"/>\`;
       });
 

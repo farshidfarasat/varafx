@@ -238,6 +238,8 @@ async function handleScheduled(env: Env): Promise<void> {
     }
 
     // Record historical data points at 10:30, 13:30, 15:30, 17:30 Iran Time
+    // (each window straddles a UTC-hour boundary, so the hour-truncated keys
+    // land up to 8 snapshots/day — never size history consumers by a point count)
     if (isHistoryRecordTime() && env.KV) {
       const historyEntry = {
         timestamp: ratesData.timestamp,

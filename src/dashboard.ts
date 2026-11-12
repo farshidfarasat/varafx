@@ -198,6 +198,38 @@ export const dashboardHtml = `<!DOCTYPE html>
       border-bottom: none;
     }
 
+    .date-lookup-controls {
+      margin: 0 0 1rem 0;
+    }
+
+    .date-input {
+      color-scheme: dark;
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 0.55rem 0.9rem;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.06);
+      color: #e2e8f0;
+      outline: none;
+    }
+
+    .date-input:focus {
+      border-color: rgba(99, 102, 241, 0.6);
+    }
+
+    .date-lookup-empty {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin: 0.5rem 0 0 0;
+    }
+
+    .date-lookup-note {
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      margin: 0.75rem 0 0 0;
+    }
+
     .currency-cell {
       display: flex;
       align-items: center;
@@ -615,6 +647,18 @@ export const dashboardHtml = `<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- Date Lookup Section -->
+    <div class="glass-card">
+      <div class="card-title" id="title-date-lookup">Rate on a Specific Date</div>
+      <p id="date-lookup-help" style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+        Pick a date to see that day's free-market rates.
+      </p>
+      <div class="date-lookup-controls">
+        <input type="date" id="rate-date-input" class="date-input" oninput="renderDateLookup()" aria-label="Pick a date">
+      </div>
+      <div id="date-lookup-result"></div>
+    </div>
+
     <!-- API Docs Section -->
     <div class="glass-card api-section">
       <div class="card-title" id="title-api-docs">Developer API Documentation</div>
@@ -649,6 +693,12 @@ export const dashboardHtml = `<!DOCTYPE html>
         disconnected: "Disconnected",
         titleUsdChart: "USD Free Market Trend (45 Days)",
         titleGbpChart: "GBP Free Market Trend (45 Days)",
+        titleDateLookup: "Rate on a Specific Date",
+        dateLookupHelp: "Pick a date to see that day's free-market rates.",
+        thDayRange: "Day Range (Sell)",
+        dateLookupNoData: "No readings stored for this date. Earliest available: ",
+        dateLookupClosing: "Buy/Sell columns show the day's last reading.",
+        dateLookupReadings: "readings on this day",
         titleApiDocs: "Developer API Documentation",
         apiDocsDesc: "Integrate our aggregated exchange rate feed into your own services. The endpoint returns JSON containing aggregated live market rates, bidirectional conversions, and 12-month historical pricing.",
         copyBtn: "Copy URL",
@@ -682,6 +732,12 @@ export const dashboardHtml = `<!DOCTYPE html>
         disconnected: "قطع",
         titleUsdChart: "نمودار قیمت دلار بازار آزاد (۴۵ روز گذشته)",
         titleGbpChart: "نمودار قیمت پوند بازار آزاد (۴۵ روز گذشته)",
+        titleDateLookup: "نرخ در تاریخ مشخص",
+        dateLookupHelp: "تاریخ را انتخاب کنید تا نرخ‌های بازار آزاد آن روز را ببینید.",
+        thDayRange: "بازه روز (فروش)",
+        dateLookupNoData: "برای این تاریخ داده‌ای ثبت نشده است. قدیمی‌ترین تاریخ موجود: ",
+        dateLookupClosing: "ستون‌های خرید و فروش، آخرین نرخ ثبت‌شده همان روز است.",
+        dateLookupReadings: "بار ثبت در این روز",
         titleApiDocs: "مستندات ای‌پی‌آی (API) توسعه‌دهندگان",
         apiDocsDesc: "از اطلاعات نرخ‌های لحظه‌ای و ترکیب‌شده ما در نرم‌افزارها و پروژه‌های خود استفاده کنید. خروجی این بخش به فرمت استاندارد JSON است و شامل نرخ‌های آزاد و تاریخچه ۱۲ ماهه می‌باشد.",
         copyBtn: "کپی آدرس",
@@ -724,6 +780,8 @@ export const dashboardHtml = `<!DOCTYPE html>
       document.getElementById('title-connections').innerText = t.titleConnections;
       document.getElementById('title-usd-chart').innerText = t.titleUsdChart;
       document.getElementById('title-gbp-chart').innerText = t.titleGbpChart;
+      document.getElementById('title-date-lookup').innerText = t.titleDateLookup;
+      document.getElementById('date-lookup-help').innerText = t.dateLookupHelp;
       document.getElementById('title-api-docs').innerText = t.titleApiDocs;
       document.getElementById('api-docs-desc').innerText = t.apiDocsDesc;
       document.getElementById('copy-btn').innerText = t.copyBtn;
@@ -735,6 +793,7 @@ export const dashboardHtml = `<!DOCTYPE html>
         renderRatesTable();
         renderConnections();
         renderCharts();
+        renderDateLookup();
         renderForexRates();
         updateLastUpdated();
         updateQualityBadge();
@@ -762,10 +821,11 @@ export const dashboardHtml = `<!DOCTYPE html>
         renderRatesTable();
         renderConnections();
         renderCharts();
+        initDateLookup();
         renderForexRates();
         updateLastUpdated();
         updateQualityBadge();
-        
+
         document.getElementById('loading').classList.add('hidden');
       } catch (err) {
         console.error(err);
@@ -999,6 +1059,75 @@ export const dashboardHtml = `<!DOCTYPE html>
 
       renderSingleChart('usd-chart-container', usdHistory, 'chart-line', 'chart-area', 'chart-gradient');
       renderSingleChart('gbp-chart-container', gbpHistory, 'chart-line chart-line-gbp', 'chart-area chart-area-gbp', 'chart-gradient-gbp');
+    }
+
+    function localDateKey(iso) {
+      // The input value is a LOCAL calendar date; group the UTC timestamps by
+      // local day too, or a Tehran "day" would start at 03:30 and the
+      // footnote's local times could read backwards (review finding, 2026-11-12).
+      return new Date(iso).toLocaleDateString('en-CA');
+    }
+
+    function initDateLookup() {
+      const input = document.getElementById('rate-date-input');
+      if (!input) return;
+      if (historyData && historyData.length > 0) {
+        const dates = historyData.map(h => localDateKey(h.timestamp)).sort();
+        input.min = dates[0];
+        input.max = dates[dates.length - 1];
+        input.value = dates[dates.length - 1];
+      } else {
+        const now = new Date();
+        input.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+      }
+      renderDateLookup();
+    }
+
+    function renderDateLookup() {
+      const input = document.getElementById('rate-date-input');
+      const result = document.getElementById('date-lookup-result');
+      if (!input || !result) return;
+      const t = dictionary[currentLang];
+      if (!input.value) { result.innerHTML = ''; return; }
+
+      const dayRows = (historyData || []).filter(h => localDateKey(h.timestamp) === input.value);
+      if (dayRows.length === 0) {
+        let earliest = '-';
+        if (historyData && historyData.length > 0) {
+          earliest = historyData.map(h => localDateKey(h.timestamp)).sort()[0];
+        }
+        result.innerHTML = '<p class="date-lookup-empty">' + t.dateLookupNoData + earliest + '</p>';
+        return;
+      }
+      dayRows.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+      const last = dayRows[dayRows.length - 1];
+
+      const defs = [
+        { key: 'usd', name: 'USD', flag: '🇺🇸' },
+        { key: 'gbp', name: 'GBP', flag: '🇬🇧' },
+        { key: 'usdt', name: 'USDT', flag: '🟢' }
+      ];
+      let rowsHtml = '';
+      defs.forEach(d => {
+        const snap = last[d.key];
+        if (!snap) return;
+        const sells = dayRows.map(r => (r[d.key] && typeof r[d.key].sell === 'number') ? r[d.key].sell : null).filter(v => v !== null);
+        const num = (v) => (typeof v === 'number' ? formatNumber(v) : '-');
+        const range = sells.length ? formatNumber(Math.min(...sells)) + ' – ' + formatNumber(Math.max(...sells)) : '-';
+        rowsHtml += '<tr>' +
+          '<td><div class="currency-cell"><span class="flag-icon">' + d.flag + '</span><span>' + d.name + '</span></div></td>' +
+          '<td><div class="price-val">' + num(snap.buy) + '</div></td>' +
+          '<td><div class="price-val">' + num(snap.sell) + '</div></td>' +
+          '<td><div class="price-val">' + range + '</div></td>' +
+        '</tr>';
+      });
+
+      const timeFmt = (iso) => new Date(iso).toLocaleTimeString(currentLang === 'fa' ? 'fa-IR' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+      result.innerHTML =
+        '<table class="rates-table"><thead><tr>' +
+          '<th>' + t.thCurrency + '</th><th>' + t.thBuy + '</th><th>' + t.thSell + '</th><th>' + t.thDayRange + '</th>' +
+        '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
+        '<p class="date-lookup-note">' + t.dateLookupClosing + ' · ' + formatNumber(dayRows.length) + ' ' + t.dateLookupReadings + ' · ' + timeFmt(dayRows[0].timestamp) + ' – ' + timeFmt(last.timestamp) + '</p>';
     }
 
     function formatTimestamp(isoStr) {

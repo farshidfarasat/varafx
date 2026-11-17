@@ -223,6 +223,10 @@ async function getCachedRates(env: Env): Promise<any> {
   return data;
 }
 
+// Build version (FX triple-check cure 4): every /api/rates payload and every
+// tick carries it — deployed-vs-repo drift becomes a string compare.
+const SERVICE_VERSION = "2026-11-17.1";
+
 async function handleScheduled(env: Env): Promise<void> {
   if (env.AUTONOMY_KILL_SWITCH?.toLowerCase() === "true") {
     console.warn("Autonomous scheduled work halted by AUTONOMY_KILL_SWITCH");

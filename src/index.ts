@@ -317,6 +317,14 @@ async function handleScheduled(env: Env): Promise<void> {
     }
   } catch (err: any) {
     console.error("Error in scheduled task:", err.message);
+    // Cure 5 (FX triple-check 2026-11-17): a dead tick leaves a machine-
+    // readable KV trace surfaced by /api/rates — a console line nobody
+    // reads is how the archive went quiet twice unnoticed.
+    if (env.KV) {
+      try {
+        await env.KV.put("last_tick_error", JSON.stringify({ at: new Date().toISOString(), message: String(err.message || err).slice(0, 300), version: SERVICE_VERSION }));
+      } catch { /* KV itself failing — nothing left to write to */ }
+    }
   }
 }
 
@@ -572,6 +580,7 @@ async function fetchFreshRates(env: Env): Promise<any> {
   return {
     status: quality === "live" ? "success" : quality,
     quality,
+    version: SERVICE_VERSION, // cure 4: deployed-vs-repo drift becomes a string compare
     quality_by_rate: qualityByRate,
     timestamp: observedAt,
     rates: {
@@ -661,6 +670,7 @@ async function fetchFreshRates(env: Env): Promise<any> {
       USD: historyUSD,
       GBP: historyGBP,
     },
+    last_tick_error: env.KV ? await env.KV.get("last_tick_error", "json").catch(() => null) : null,
     connections: {
       "Bonbast (Live)": bonbastLiveResult.status === "fulfilled",
       "Bonbast (Archive)": archiveResult.status === "fulfilled",

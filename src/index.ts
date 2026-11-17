@@ -12,7 +12,7 @@ import {
   PROVIDER_DISAGREEMENT_CAP,
 } from "./rate-selection";
 import { classifyRateQuality, type RateQuality } from "./rate-quality";
-import { forexHistoryKey, ratesHistoryKey } from "./history-keys";
+import { forexHistoryKey, ratesHistoryKey, readKeyedHistory } from "./history-keys";
 import { extractGoogleFinanceRate, type GoogleFxRate } from "./google-fx";
 
 interface Env {
@@ -145,7 +145,7 @@ export default {
       try {
         let history: any[] = [];
         if (env.KV) {
-          history = await readKeyedHistory(env.KV, "forex_history:", "forex_history");
+          history = await readKeyedHistory(env.KV, "forex_history:", "forex_history", 60);
         }
         return new Response(JSON.stringify(history), {
           headers: {
@@ -222,6 +222,10 @@ async function getCachedRates(env: Env): Promise<any> {
   };
   return data;
 }
+
+// Build version (FX triple-check cure 4): every /api/rates payload and every
+// tick carries it — deployed-vs-repo drift becomes a string compare.
+const SERVICE_VERSION = "2026-11-17.1";
 
 async function handleScheduled(env: Env): Promise<void> {
   if (env.AUTONOMY_KILL_SWITCH?.toLowerCase() === "true") {
@@ -319,33 +323,15 @@ async function handleScheduled(env: Env): Promise<void> {
     }
   } catch (err: any) {
     console.error("Error in scheduled task:", err.message);
+    // Cure 5 (FX triple-check 2026-11-17): a dead tick leaves a machine-
+    // readable KV trace surfaced by /api/rates — a console line nobody
+    // reads is how the archive went quiet twice unnoticed.
+    if (env.KV) {
+      try {
+        await env.KV.put("last_tick_error", JSON.stringify({ at: new Date().toISOString(), message: String(err.message || err).slice(0, 300), version: SERVICE_VERSION }));
+      } catch { /* KV itself failing — nothing left to write to */ }
+    }
   }
-}
-
-async function readKeyedHistory(
-  kv: KVNamespace,
-  prefix: string,
-  legacyKey: string,
-): Promise<any[]> {
-  const listed = await kv.list({ prefix, limit: 1000 });
-  const keyed = await Promise.all(
-    listed.keys.map(async ({ name }) => {
-      const value = await kv.get(name, "json");
-      return value && typeof value === "object" ? value : null;
-    }),
-  );
-  const history = keyed.filter((entry): entry is Record<string, unknown> => entry !== null);
-  if (history.length > 0) {
-    const maxEntries = prefix === "forex_history:" ? 60 : 1500;
-    return history
-      .sort((a, b) =>
-        String(a.timestamp ?? a.date).localeCompare(String(b.timestamp ?? b.date)),
-      )
-      .slice(-maxEntries);
-  }
-
-  const legacy = await kv.get(legacyKey, "json");
-  return Array.isArray(legacy) ? legacy : [];
 }
 
 async function fetchFreshRates(env: Env): Promise<any> {
@@ -468,15 +454,20 @@ async function fetchFreshRates(env: Env): Promise<any> {
     const archiveData = archiveResult.value;
     const dates = Object.keys(archiveData).sort();
     const last30Dates = dates.slice(-30);
-    historyUSD = last30Dates.map(d => ({
+    // FX triple-check cure 3 (2026-11-16/17): omit days the upstream archive
+    // lacks instead of filling with today's price — the fill drew a FLAT LINE
+    // at the current rate (upstream has no USD/GBP since 2026-10-09), which
+    // any charting consumer reads as a frozen market. Missing day = missing
+    // point, honestly.
+    historyUSD = last30Dates.filter(d => archiveData[d]?.usd?.sell != null).map(d => ({
       date: d,
-      sell: archiveData[d].usd?.sell || finalUsdSell,
-      buy: archiveData[d].usd?.buy || finalUsdBuy,
+      sell: archiveData[d].usd.sell,
+      buy: archiveData[d].usd.buy,
     }));
-    historyGBP = last30Dates.map(d => ({
+    historyGBP = last30Dates.filter(d => archiveData[d]?.gbp?.sell != null).map(d => ({
       date: d,
-      sell: archiveData[d].gbp?.sell || finalGbpSell,
-      buy: archiveData[d].gbp?.buy || finalGbpBuy,
+      sell: archiveData[d].gbp.sell,
+      buy: archiveData[d].gbp.buy,
     }));
   }
 
@@ -595,6 +586,7 @@ async function fetchFreshRates(env: Env): Promise<any> {
   return {
     status: quality === "live" ? "success" : quality,
     quality,
+    version: SERVICE_VERSION, // cure 4: deployed-vs-repo drift becomes a string compare
     quality_by_rate: qualityByRate,
     timestamp: observedAt,
     rates: {
@@ -684,6 +676,7 @@ async function fetchFreshRates(env: Env): Promise<any> {
       USD: historyUSD,
       GBP: historyGBP,
     },
+    last_tick_error: env.KV ? await env.KV.get("last_tick_error", "json").catch(() => null) : null,
     connections: {
       "Bonbast (Live)": bonbastLiveResult.status === "fulfilled",
       "Bonbast (Archive)": archiveResult.status === "fulfilled",

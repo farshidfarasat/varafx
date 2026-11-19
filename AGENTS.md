@@ -23,7 +23,6 @@ One rulebook that every agent reads (owner ruling 2026-10-05, D-030: "I don't ha
    - **Open items:** every item that is HIS to attend, each naming what it needs from him — a **decision** (lettered choices (A/B/C) with analysis across customers, revenue, trust, risk, cost and speed; the weighting that ranked them; recommendation named first with a one-line why; one next step) or a **watch** (the risk, what is running about it, the next checkpoint). Agent-owned work items never appear here (D-092); blockers live on the Blockers line. If nothing needs his attention, one line: none. (owner correction 2026-11-11: "don't you think concerns and open items should be one thing?") **Topic scope (owner correction 2026-11-12):** an open item is raised only in the chat whose topic it belongs to — an unrelated item found along the way is written to its durable home (open-jobs.md, DECISIONS.md, the topic's goal file) and raised in that topic's own chat, never in any form inside another chat's report.
    - Standing orderings: safety > explicit > inferred > preference; safety outranks speed.
    - Sections are never dropped for brevity: succinct cuts process narration, never the decision layer; a genuinely-empty section says so in one line (owner ruling 2026-10-16). Every principal-facing reply is itemized with key concepts bolded and ends with a بلاکرها line; remaining work is a blocker whichever side it sits on, and each blocker is stated with its fix — the exact command or the one click (none → Blockers: none; chat replies to Hossein are English and close with the English Blockers line — owner ruling D-088, 2026-11-09) (owner rulings 2026-10-12, 2026-10-17, D-088 2026-11-09).
-   - The report shape is machine-checked (agent default, 2026-11-19, mechanizing owner rulings 2026-10-12, 2026-10-19, D-088 and D-093): a multi-line report or decision ask passes the report gate before it is sent — `npm run check:report -- <draft>` in the ledger repo; every red names its rule and is cured in the draft, never shipped. The gate holds the ruled shape: outcome slot, tagged Open items, complete decision packets (options, recommendation first, weighting, one next step), the Blockers close, no prose wall.
    - Interim messages a principal reads mid-task carry substance too: results so far, blockers, remaining work — never bare process narration; the full three-section report lands once the work and its review are done (owner ruling 2026-10-13).
    - **Last check before sending:** re-read it as the principal would. Does the first line answer the actual ask — done, stuck, his action? Is every number fresh and sourced? Is anything jargon, or an old incident nobody asked about? Does it end in one next step, or "none"?
 
@@ -67,7 +66,6 @@ Good, same content in the principals' format:
     - B) Require a reference first: zero swap risk; a manual step on ~9 of 14 transfers.
     - Weighting: trust carried the most weight; cost near zero; speed medium.
     - Next step: reply A or B.
-- Blockers: none.
 <!-- shared-rulebook:end -->
 
 ## Architecture (src/index.ts is the whole worker)
